@@ -54,7 +54,7 @@ export default function Page() {
   const lang = DEFAULT_LANG;
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white">
       <header className="mx-auto max-w-6xl px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="font-semibold">{APP.name}</div>
@@ -70,10 +70,10 @@ export default function Page() {
       <section className="mx-auto max-w-6xl px-4 pb-10 pt-6">
         <div className="grid gap-8 md:grid-cols-2 md:items-start">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+<h1 className="text-4xl font-bold tracking-tight text-gray-900 md:text-5xl">
               {APP.tagline[lang]}
             </h1>
-            <p className="mt-4 text-lg text-gray-700">{APP.subtagline[lang]}</p>
+            <p className="mt-4 text-lg text-gray-900">{APP.subtagline[lang]}</p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <a
