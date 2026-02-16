@@ -113,9 +113,13 @@ export default function Page() {
       trustStripA: "Based on public sources",
       trustStripB: "Not legal advice",
       trustStripC: "Built for PGWP → CEC",
+      roadmapTitle: "Roadmap",
+      roadmapSub: "This is what we’re building step-by-step with early users.",
       faqTitle: "Quick FAQ",
       disclaimer:
         "Disclaimer: informational tool based on public sources. Not legal or immigration advice.",
+      mockTitle: "Scenario simulator (preview)",
+      mockSub: "A simple flow: baseline → improvements → ranked recommendations.",
     },
     es: {
       navCta: "Acceso anticipado",
@@ -136,9 +140,13 @@ export default function Page() {
       trustStripA: "Basado en fuentes públicas",
       trustStripB: "No es asesoría legal",
       trustStripC: "Hecho para PGWP → CEC",
+      roadmapTitle: "Roadmap",
+      roadmapSub: "Esto es lo que construiremos paso a paso con usuarios tempranos.",
       faqTitle: "Preguntas rápidas",
       disclaimer:
         "Disclaimer: herramienta informativa basada en fuentes públicas. No es asesoría legal o migratoria.",
+      mockTitle: "Simulador de escenarios (preview)",
+      mockSub: "Flujo simple: base → mejoras → recomendaciones ordenadas.",
     },
   }[lang];
 
@@ -188,8 +196,9 @@ export default function Page() {
         <div className="absolute top-40 -right-32 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
-      <header className="mx-auto max-w-6xl px-4 py-6">
-        <div className="flex items-center justify-between">
+      {/* Sticky header (premium) */}
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-white/60 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white font-semibold">
               C
@@ -200,10 +209,14 @@ export default function Page() {
             </div>
           </div>
 
+          {/* Top-right CTA (high contrast) */}
           <a
             href="#access"
-            className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm backdrop-blur hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
           >
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-xs">
+              ✦
+            </span>
             {ui.navCta}
           </a>
         </div>
@@ -253,27 +266,126 @@ export default function Page() {
 
             {/* Trust strip */}
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {[
-                { label: ui.trustStripA },
-                { label: ui.trustStripB },
-                { label: ui.trustStripC },
-              ].map((item) => (
+              {[ui.trustStripA, ui.trustStripB, ui.trustStripC].map((label) => (
                 <div
-                  key={item.label}
+                  key={label}
                   className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-gray-800 shadow-sm backdrop-blur"
                 >
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs text-white">
                       ✓
                     </span>
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium">{label}</span>
                   </div>
                 </div>
               ))}
             </div>
 
+            {/* Mock UI Preview */}
+            <section className="mt-10">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">{ui.mockTitle}</h2>
+                  <p className="mt-2 text-sm text-gray-600">{ui.mockSub}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-3xl border border-black/10 bg-white/70 p-4 shadow-sm backdrop-blur">
+                {/* top bar */}
+                <div className="flex items-center justify-between rounded-2xl border border-black/10 bg-white p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                    </div>
+                    <span className="text-xs font-medium text-gray-700">
+                      CRS Roadmap — Simulator
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-900">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                    Preview
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {/* Left panel */}
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <div className="text-sm font-semibold text-gray-900">Your baseline</div>
+
+                    <div className="mt-3 grid gap-3">
+                      <div className="rounded-xl border border-black/10 bg-gray-50 px-3 py-2">
+                        <div className="text-xs text-gray-500">Current CRS</div>
+                        <div className="text-lg font-semibold text-gray-900">472</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-black/10 bg-gray-50 px-3 py-2">
+                          <div className="text-xs text-gray-500">Language</div>
+                          <div className="text-sm font-semibold text-gray-900">CLB 8</div>
+                        </div>
+                        <div className="rounded-xl border border-black/10 bg-gray-50 px-3 py-2">
+                          <div className="text-xs text-gray-500">CEC</div>
+                          <div className="text-sm font-semibold text-gray-900">10 months</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-black/10 bg-gray-50 px-3 py-2">
+                        <div className="text-xs text-gray-500">Selected goal</div>
+                        <div className="text-sm font-semibold text-gray-900">
+                          Increase CRS in 8–12 weeks
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right panel */}
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-900">
+                        Recommended improvements
+                      </div>
+                      <div className="text-xs text-gray-500">Sorted by ROI</div>
+                    </div>
+
+                    <div className="mt-3 space-y-3">
+                      {[
+                        { label: "IELTS → CLB 9", pts: "+35 to +55", tag: "High impact" },
+                        { label: "French (B1→B2)", pts: "+20 to +62", tag: "Strong boost" },
+                        { label: "CEC 12 months", pts: "+10 to +35", tag: "Time-based" },
+                      ].map((row) => (
+                        <div
+                          key={row.label}
+                          className="rounded-xl border border-black/10 bg-gray-50 p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {row.label}
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {row.pts}
+                            </div>
+                          </div>
+                          <div className="mt-2 inline-flex items-center rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-xs font-medium text-indigo-800">
+                            {row.tag}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-3 text-white shadow-sm">
+                      <div className="text-xs opacity-90">Projected CRS range</div>
+                      <div className="text-lg font-semibold">507 – 534</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Value */}
-            <div className="mt-10">
+            <div className="mt-12">
               <h2 className="text-xl font-semibold text-gray-900">{ui.sectionValue}</h2>
 
               <ul className="mt-4 space-y-3">
@@ -296,11 +408,9 @@ export default function Page() {
 
             {/* Examples */}
             <section className="mt-12">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">{ui.examplesTitle}</h2>
-                  <p className="mt-2 text-sm text-gray-600">{ui.examplesSub}</p>
-                </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">{ui.examplesTitle}</h2>
+                <p className="mt-2 text-sm text-gray-600">{ui.examplesSub}</p>
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -316,6 +426,46 @@ export default function Page() {
                     <p className="mt-2 text-sm text-gray-700">{ex.desc}</p>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            {/* Roadmap */}
+            <section className="mt-12">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">{ui.roadmapTitle}</h2>
+                <p className="mt-2 text-sm text-gray-600">{ui.roadmapSub}</p>
+              </div>
+
+              <div className="mt-5 rounded-3xl border border-black/10 bg-white/70 p-5 shadow-sm backdrop-blur">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {[
+                    { label: "Beta leads", done: true },
+                    { label: "Simulator", done: true },
+                    { label: "ROI plan", done: false },
+                    { label: "Launch", done: false },
+                  ].map((step, idx) => (
+                    <div key={step.label} className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                          step.done
+                            ? "bg-black text-white"
+                            : "border border-black/15 bg-white text-gray-900"
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">{step.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 h-2 w-full rounded-full bg-gray-200">
+                  <div className="h-2 w-1/2 rounded-full bg-linear-to-r from-indigo-600 to-blue-600" />
+                </div>
+
+                <div className="mt-2 text-xs text-gray-600">
+                  Current: collecting early users + refining the simulator UX.
+                </div>
               </div>
             </section>
 
