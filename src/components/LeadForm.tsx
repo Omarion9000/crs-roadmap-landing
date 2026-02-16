@@ -4,181 +4,206 @@ import { useMemo, useState } from "react";
 import { LEAD_ENDPOINT } from "@/lib/config";
 
 type Lang = "en" | "es";
-type FormState = "idle" | "submitting" | "success" | "error";
 
-const TEXT: Record<Lang, Record<string, string>> = {
-  en: {
-    title: "Early access",
-    desc: "Leave your email and I’ll notify you when the private beta opens.",
-    emailLabel: "Email (required)",
-    crsLabel: "Approx CRS score (optional)",
-    worryLabel: "What worries you most? (optional)",
-    emailPh: "you@email.com",
-    crsPh: "e.g., 472",
-    worryPh: "e.g., Should I focus on French or wait for 1 year of CEC?",
-    btnIdle: "Get access",
-    btnSending: "Sending...",
-    success: "Done ✅ I’ll email you when the beta is ready.",
-    error: "Something failed. Try again.",
-    legal:
-      "Informational tool based on public sources. Not legal or immigration advice.",
-    missingEndpoint:
-      "Missing Google Sheets endpoint. Complete the Google Apps Script step and paste the URL into src/lib/config.ts",
-  },
-  es: {
-    title: "Acceso anticipado",
-    desc: "Déjame tu email y te aviso cuando abramos la beta privada.",
-    emailLabel: "Email (obligatorio)",
-    crsLabel: "CRS aproximado (opcional)",
-    worryLabel: "¿Qué te preocupa más? (opcional)",
-    emailPh: "tuemail@gmail.com",
-    crsPh: "Ej: 472",
-    worryPh: "Ej: ¿Me conviene francés o esperar 1 año CEC?",
-    btnIdle: "Quiero acceso",
-    btnSending: "Enviando...",
-    success: "Listo ✅ Te avisaré cuando la beta esté lista.",
-    error: "Algo falló. Intenta de nuevo.",
-    legal:
-      "Herramienta informativa basada en fuentes públicas. No es asesoría legal o migratoria.",
-    missingEndpoint:
-      "Falta configurar el endpoint de Google Sheets. Termina Apps Script y pega la URL en src/lib/config.ts",
-  },
+type Props = {
+  lang?: Lang;
 };
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-export default function LeadForm({ lang }: { lang: Lang }) {
-  const t = TEXT[lang];
-  const [state, setState] = useState<FormState>("idle");
+export default function LeadForm({ lang = "en" }: Props) {
   const [email, setEmail] = useState("");
   const [crs, setCrs] = useState("");
   const [worry, setWorry] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle"
+  );
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const endpoint = LEAD_ENDPOINT.googleAppsScriptUrl?.trim();
+  const copy = useMemo(() => {
+    const en = {
+      title: "Early access",
+      subtitle: "Leave your email and I’ll notify you when the private beta opens.",
+      email: "Email (required)",
+      crs: "Approx CRS score (optional)",
+      worry: "What worries you most? (optional)",
+      btn: "Get access",
+      sending: "Sending…",
+      okTitle: "You’re in ✅",
+      okBody: "Thanks! I’ll email you when the beta opens.",
+      errTitle: "Something went wrong",
+      errBody: "Please try again in a moment.",
+      helper:
+        "No spam. Unsubscribe anytime. Informational tool — not legal or immigration advice.",
+    };
 
-  const canSubmit = useMemo(() => {
-    if (state === "submitting") return false;
-    if (!isValidEmail(email)) return false;
-    return true;
-  }, [email, state]);
+    const es = {
+      title: "Acceso anticipado",
+      subtitle: "Deja tu email y te aviso cuando abra la beta privada.",
+      email: "Email (requerido)",
+      crs: "CRS aproximado (opcional)",
+      worry: "¿Qué te preocupa más? (opcional)",
+      btn: "Quiero acceso",
+      sending: "Enviando…",
+      okTitle: "Listo ✅",
+      okBody: "¡Gracias! Te aviso cuando abra la beta.",
+      errTitle: "Ocurrió un error",
+      errBody: "Intenta de nuevo en un momento.",
+      helper:
+        "Cero spam. Puedes salir cuando quieras. Herramienta informativa — no es asesoría legal o migratoria.",
+    };
+
+    return lang === "es" ? es : en;
+  }, [lang]);
+
+  const disabled = status === "loading";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMsg("");
 
-    if (!isValidEmail(email)) {
-      setState("error");
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) {
+      setStatus("error");
+      setErrorMsg(lang === "es" ? "Email inválido." : "Invalid email.");
       return;
     }
 
-    if (!endpoint) {
-      alert(t.missingEndpoint);
+    if (!LEAD_ENDPOINT.googleAppsScriptUrl) {
+      setStatus("error");
+      setErrorMsg(
+        lang === "es"
+          ? "Falta configurar la URL del Google Script."
+          : "Google Script URL is not configured."
+      );
       return;
     }
 
-    setState("submitting");
+    setStatus("loading");
 
     try {
       const payload = {
-        email: email.trim(),
+        email: trimmed,
         crs: crs.trim(),
         worry: worry.trim(),
         source: "landing",
         lang,
-        ts: new Date().toISOString(),
       };
 
-      const res = await fetch(endpoint, {
+      const res = await fetch(LEAD_ENDPOINT.googleAppsScriptUrl, {
         method: "POST",
-        // Apps Script suele funcionar mejor con text/plain para evitar preflight CORS
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Bad response");
+      const text = await res.text();
 
-      setState("success");
+      if (!res.ok) {
+        throw new Error(text || "Request failed");
+      }
+
+      // Try to parse JSON response if present
+      try {
+        const json = JSON.parse(text) as { ok?: boolean; error?: string };
+        if (json?.ok === false) throw new Error(json.error || "Server error");
+      } catch {
+        // If it isn't JSON, still consider it success if HTTP was ok
+      }
+
+      setStatus("success");
       setEmail("");
       setCrs("");
       setWorry("");
-    } catch {
-      setState("error");
+    } catch (err: unknown) {
+      setStatus("error");
+      const message =
+        err instanceof Error
+          ? err.message
+          : lang === "es"
+          ? "Error desconocido."
+          : "Unknown error.";
+      setErrorMsg(message || copy.errBody);
     }
   }
 
   return (
-    <div className="w-full rounded-2xl border bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold">{t.title}</h3>
-      <p className="mt-1 text-sm text-gray-600">{t.desc}</p>
-
-      <form onSubmit={onSubmit} className="mt-4 space-y-3">
-        <div>
-          <label className="text-sm font-medium" htmlFor="email">
-            {t.emailLabel}
-          </label>
-          <input
-            id="email"
-            type="email"
-            className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-            placeholder={t.emailPh}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium" htmlFor="crs">
-            {t.crsLabel}
-          </label>
-          <input
-            id="crs"
-            inputMode="numeric"
-            className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-            placeholder={t.crsPh}
-            value={crs}
-            onChange={(e) => setCrs(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium" htmlFor="worry">
-            {t.worryLabel}
-          </label>
-          <textarea
-            id="worry"
-            className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-            placeholder={t.worryPh}
-            value={worry}
-            onChange={(e) => setWorry(e.target.value)}
-            rows={3}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full rounded-xl bg-black px-4 py-2 font-medium text-white disabled:opacity-50"
-        >
-          {state === "submitting" ? t.btnSending : t.btnIdle}
-        </button>
-
-        {state === "success" && (
-          <div className="rounded-xl bg-green-50 p-3 text-sm text-green-800">
-            {t.success}
+    <div className="w-full">
+      <div className="rounded-3xl border border-black/10 bg-white/80 p-6 shadow-lg backdrop-blur">
+        <div className="mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/60 px-3 py-1 text-xs font-medium text-indigo-900">
+            <span className="h-2 w-2 rounded-full bg-indigo-500" />
+            {copy.title}
           </div>
-        )}
 
-        {state === "error" && (
-          <div className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
-            {t.error}
-          </div>
-        )}
+          <p className="mt-3 text-sm text-gray-700">{copy.subtitle}</p>
+        </div>
 
-        <p className="text-xs text-gray-500">{t.legal}</p>
-      </form>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-800">{copy.email}</span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@email.com"
+              disabled={disabled}
+              className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-800">{copy.crs}</span>
+            <input
+              value={crs}
+              onChange={(e) => setCrs(e.target.value)}
+              placeholder="e.g., 472"
+              disabled={disabled}
+              className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-800">{copy.worry}</span>
+            <textarea
+              value={worry}
+              onChange={(e) => setWorry(e.target.value)}
+              placeholder={
+                lang === "es"
+                  ? "Ej. ¿Me conviene francés o esperar 1 año de CEC?"
+                  : "e.g., Should I focus on French or wait for 1 year of CEC?"
+              }
+              disabled={disabled}
+              rows={4}
+              className="mt-1 w-full resize-none rounded-xl border border-black/10 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={disabled}
+            className="w-full rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-50"
+          >
+            {disabled ? copy.sending : copy.btn}
+          </button>
+
+          {status === "success" && (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+              <div className="font-semibold">{copy.okTitle}</div>
+              <div className="mt-1">{copy.okBody}</div>
+            </div>
+          )}
+
+          {status === "error" && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              <div className="font-semibold">{copy.errTitle}</div>
+              <div className="mt-1">{errorMsg || copy.errBody}</div>
+            </div>
+          )}
+
+          <p className="pt-1 text-xs text-gray-600">{copy.helper}</p>
+        </form>
+      </div>
     </div>
   );
 }
