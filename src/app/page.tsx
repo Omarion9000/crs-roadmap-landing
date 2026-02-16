@@ -107,6 +107,12 @@ export default function Page() {
       trust:
         "Built by a former international student. Beta in progress — your feedback shapes the roadmap.",
       sectionValue: "What you’ll get",
+      examplesTitle: "Real-world examples",
+      examplesSub:
+        "Typical point boosts vary by profile — this tool helps you model YOUR scenarios.",
+      trustStripA: "Based on public sources",
+      trustStripB: "Not legal advice",
+      trustStripC: "Built for PGWP → CEC",
       faqTitle: "Quick FAQ",
       disclaimer:
         "Disclaimer: informational tool based on public sources. Not legal or immigration advice.",
@@ -124,11 +130,54 @@ export default function Page() {
       trust:
         "Hecho por un ex estudiante internacional. Beta en progreso — tu feedback define el roadmap.",
       sectionValue: "Lo que obtendrás",
+      examplesTitle: "Ejemplos reales",
+      examplesSub:
+        "Los puntos varían por perfil — esta herramienta modela TUS escenarios.",
+      trustStripA: "Basado en fuentes públicas",
+      trustStripB: "No es asesoría legal",
+      trustStripC: "Hecho para PGWP → CEC",
       faqTitle: "Preguntas rápidas",
       disclaimer:
         "Disclaimer: herramienta informativa basada en fuentes públicas. No es asesoría legal o migratoria.",
     },
   }[lang];
+
+  const examples =
+    lang === "en"
+      ? [
+          {
+            badge: "+50 pts",
+            title: "IELTS jump to CLB 9",
+            desc: "For many profiles, hitting CLB 9 can unlock big transfers.",
+          },
+          {
+            badge: "+62 pts",
+            title: "French (B2 range)",
+            desc: "French can be a game-changer depending on your baseline.",
+          },
+          {
+            badge: "+600 pts",
+            title: "PNP nomination",
+            desc: "A nomination can dramatically change your invitation chances.",
+          },
+        ]
+      : [
+          {
+            badge: "+50 pts",
+            title: "IELTS subir a CLB 9",
+            desc: "Para muchos perfiles, CLB 9 desbloquea transferencias fuertes.",
+          },
+          {
+            badge: "+62 pts",
+            title: "Francés (rango B2)",
+            desc: "El francés puede cambiar todo según tu base actual.",
+          },
+          {
+            badge: "+600 pts",
+            title: "Nominación PNP",
+            desc: "Una nominación puede disparar tus posibilidades de invitación.",
+          },
+        ];
 
   return (
     <main className="min-h-screen bg-white">
@@ -202,6 +251,27 @@ export default function Page() {
 
             <p className="mt-4 text-sm text-gray-600">{ui.trust}</p>
 
+            {/* Trust strip */}
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {[
+                { label: ui.trustStripA },
+                { label: ui.trustStripB },
+                { label: ui.trustStripC },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-gray-800 shadow-sm backdrop-blur"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs text-white">
+                      ✓
+                    </span>
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Value */}
             <div className="mt-10">
               <h2 className="text-xl font-semibold text-gray-900">{ui.sectionValue}</h2>
@@ -224,10 +294,35 @@ export default function Page() {
               </ul>
             </div>
 
+            {/* Examples */}
+            <section className="mt-12">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">{ui.examplesTitle}</h2>
+                  <p className="mt-2 text-sm text-gray-600">{ui.examplesSub}</p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {examples.map((ex) => (
+                  <div
+                    key={ex.title}
+                    className="rounded-2xl border border-black/10 bg-white/70 p-5 shadow-sm backdrop-blur"
+                  >
+                    <div className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50/60 px-3 py-1 text-xs font-semibold text-indigo-900">
+                      {ex.badge}
+                    </div>
+                    <div className="mt-3 font-semibold text-gray-900">{ex.title}</div>
+                    <p className="mt-2 text-sm text-gray-700">{ex.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             {/* How it works */}
             <div
               id="how"
-              className="mt-10 rounded-2xl border border-black/10 bg-white/70 p-6 shadow-sm backdrop-blur"
+              className="mt-12 rounded-2xl border border-black/10 bg-white/70 p-6 shadow-sm backdrop-blur"
             >
               <h2 className="text-xl font-semibold text-gray-900">
                 {lang === "en" ? "How it works" : "Cómo funciona"}
