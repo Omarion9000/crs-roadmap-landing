@@ -20,7 +20,7 @@ export default function LeadForm({ lang = "en" }: Props) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle"
   );
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   const copy = useMemo(() => {
     const en = {
@@ -104,12 +104,11 @@ export default function LeadForm({ lang = "en" }: Props) {
         throw new Error(text || "Request failed");
       }
 
-      // Try to parse JSON response if present
       try {
         const json = JSON.parse(text) as { ok?: boolean; error?: string };
-        if (json?.ok === false) throw new Error(json.error || "Server error");
+        if (json?.ok === false) throw new Error(json?.error || "Server error");
       } catch {
-        // If it isn't JSON, still consider it success if HTTP was ok
+        // ignore parse errors
       }
 
       setStatus("success");
@@ -118,13 +117,16 @@ export default function LeadForm({ lang = "en" }: Props) {
       setWorry("");
     } catch (err: unknown) {
       setStatus("error");
-      const message =
-        err instanceof Error
-          ? err.message
-          : lang === "es"
-          ? "Error desconocido."
-          : "Unknown error.";
-      setErrorMsg(message || copy.errBody);
+
+      let msg = copy.errBody;
+
+      if (err instanceof Error) {
+        msg = err.message || copy.errBody;
+      } else if (typeof err === "string") {
+        msg = err;
+      }
+
+      setErrorMsg(msg);
     }
   }
 
