@@ -35,6 +35,22 @@ const bullets: Record<Lang, { title: string; desc: string }[]> = {
   ],
 };
 
+const outcomes: Record<
+  Lang,
+  { label: string; points: string; note: string }[]
+> = {
+  en: [
+    { label: "IELTS to CLB 9", points: "+ up to ~50", note: "High ROI for many profiles" },
+    { label: "French to B2", points: "+ up to ~62", note: "Often a game-changer" },
+    { label: "PNP nomination", points: "+600", note: "If eligible, massive boost" },
+  ],
+  es: [
+    { label: "IELTS a CLB 9", points: "+ hasta ~50", note: "Alto ROI para muchos perfiles" },
+    { label: "Francés a B2", points: "+ hasta ~62", note: "Suele cambiar el juego" },
+    { label: "Nominación PNP", points: "+600", note: "Si calificas, boost enorme" },
+  ],
+};
+
 const faqs: Record<Lang, { q: string; a: string }[]> = {
   en: [
     {
@@ -107,6 +123,8 @@ export default function Page() {
       trust:
         "Built by a former international student. Beta in progress — your feedback shapes the roadmap.",
       sectionValue: "What you’ll get",
+      outcomesTitle: "Example outcomes",
+      outcomesSub: "Quick preview of the kind of “point ROI” guidance you’ll get.",
       faqTitle: "Quick FAQ",
       disclaimer:
         "Disclaimer: informational tool based on public sources. Not legal or immigration advice.",
@@ -124,6 +142,8 @@ export default function Page() {
       trust:
         "Hecho por un ex estudiante internacional. Beta en progreso — tu feedback define el roadmap.",
       sectionValue: "Lo que obtendrás",
+      outcomesTitle: "Ejemplos de impacto",
+      outcomesSub: "Vista rápida del tipo de “ROI de puntos” que verás.",
       faqTitle: "Preguntas rápidas",
       disclaimer:
         "Disclaimer: herramienta informativa basada en fuentes públicas. No es asesoría legal o migratoria.",
@@ -132,11 +152,11 @@ export default function Page() {
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Premium background */}
+      {/* ✅ Tailwind v3-friendly gradients */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-linear-to-b from-slate-50 via-white to-white" />
-        <div className="absolute -top-40 left-1/2 h-80 w-208 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute top-40 -right-32 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-white" />
+        <div className="absolute -top-40 left-1/2 h-80 w-[52rem] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute top-40 right-[-8rem] h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
       <header className="mx-auto max-w-6xl px-4 py-6">
@@ -185,7 +205,7 @@ export default function Page() {
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
                 href="#access"
-                className="rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95"
+                className="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95"
               >
                 {ui.ctaPrimary}
               </a>
@@ -222,6 +242,34 @@ export default function Page() {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* ✅ NEW: outcomes / points section */}
+            <div className="mt-10 rounded-2xl border border-black/10 bg-white/70 p-6 shadow-sm backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">{ui.outcomesTitle}</h2>
+                  <p className="mt-1 text-sm text-gray-700">{ui.outcomesSub}</p>
+                </div>
+                <div className="hidden md:block rounded-full bg-indigo-600/10 px-3 py-1 text-xs font-semibold text-indigo-700">
+                  ROI preview
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                {outcomes[lang].map((o) => (
+                  <div
+                    key={o.label}
+                    className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+                  >
+                    <div className="text-sm font-semibold text-gray-900">{o.label}</div>
+                    <div className="mt-2 inline-flex rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-1 text-sm font-semibold text-white">
+                      {o.points}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">{o.note}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* How it works */}

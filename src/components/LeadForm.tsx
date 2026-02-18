@@ -100,9 +100,7 @@ export default function LeadForm({ lang = "en" }: Props) {
 
       const text = await res.text();
 
-      if (!res.ok) {
-        throw new Error(text || "Request failed");
-      }
+      if (!res.ok) throw new Error(text || "Request failed");
 
       try {
         const json = JSON.parse(text) as { ok?: boolean; error?: string };
@@ -119,12 +117,8 @@ export default function LeadForm({ lang = "en" }: Props) {
       setStatus("error");
 
       let msg = copy.errBody;
-
-      if (err instanceof Error) {
-        msg = err.message || copy.errBody;
-      } else if (typeof err === "string") {
-        msg = err;
-      }
+      if (err instanceof Error) msg = err.message || copy.errBody;
+      else if (typeof err === "string") msg = err;
 
       setErrorMsg(msg);
     }
@@ -181,10 +175,11 @@ export default function LeadForm({ lang = "en" }: Props) {
             />
           </label>
 
+          {/* ✅ back to Tailwind v3-friendly gradient */}
           <button
             type="submit"
             disabled={disabled}
-            className="w-full rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-50"
           >
             {disabled ? copy.sending : copy.btn}
           </button>
