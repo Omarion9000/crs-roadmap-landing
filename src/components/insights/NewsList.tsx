@@ -1,48 +1,54 @@
-"use client";
-
-export type NewsItem = {
-  id: string;
-  title: string;
-  source: string;
-  dateISO: string;
-  url?: string;
-  tag?: string;
-};
+// src/components/insights/NewsList.tsx
+import type { NewsItem } from "@/lib/insights/types";
 
 export default function NewsList({ items }: { items: NewsItem[] }) {
-  if (!items.length) {
-    return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/70">
-        News module is ready ✅ — next step is wiring a real feed (/api/news).
-      </div>
-    );
+  if (!items || items.length === 0) {
+    return <div className="text-sm text-white/60">No news yet.</div>;
   }
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-      <div className="text-sm font-semibold text-white">Latest news</div>
+    <ul className="space-y-3">
+      {items.slice(0, 8).map((n, i) => {
+        const key = n.id ?? `${n.title}-${i}`;
+        const date = n.publishedAt ?? "";
+        const tag = n.tag ?? "";
 
-      <div className="mt-4 space-y-3">
-        {items.map((n) => (
-          <a
-            key={n.id}
-            href={n.url ?? "#"}
-            className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:bg-black/30 transition"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-white">{n.title}</div>
-              {n.tag ? (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70">
-                  {n.tag}
+        return (
+          <li key={key} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {n.url ? (
+                  <a
+                    href={n.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block truncate text-sm font-medium text-white hover:underline"
+                  >
+                    {n.title}
+                  </a>
+                ) : (
+                  <div className="truncate text-sm font-medium text-white">{n.title}</div>
+                )}
+
+                <div className="mt-1 text-xs text-white/60">
+                  {n.source ?? "Source"}
+                  {date ? ` • ${date}` : ""}
+                </div>
+              </div>
+
+              {tag ? (
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70">
+                  {tag}
+                </span>
+              ) : n.url ? (
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70">
+                  Open
                 </span>
               ) : null}
             </div>
-            <div className="mt-2 text-xs text-white/60">
-              {n.source} • {n.dateISO}
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
