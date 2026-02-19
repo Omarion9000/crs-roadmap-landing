@@ -20,7 +20,6 @@ export default function InsightsClient() {
   const [draws, setDraws] = useState<Draw[]>(MOCK_DRAWS);
   const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS);
 
-  // API-first (pero con fallback a mock)
   useEffect(() => {
     const controller = new AbortController();
 
@@ -41,7 +40,7 @@ export default function InsightsClient() {
           if (Array.isArray(nJson.items)) setNews(nJson.items);
         }
       } catch {
-        // ignore (fallback keeps mock)
+        // fallback stays on MOCK_*
       }
     }
 
@@ -51,6 +50,7 @@ export default function InsightsClient() {
 
   const stats = useMemo(() => {
     const last = draws[draws.length - 1];
+
     const avgCutoff =
       draws.length === 0
         ? 0
@@ -69,11 +69,11 @@ export default function InsightsClient() {
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
-      {/* bg */}
+      {/* background */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#070A12] via-[#070A12] to-black" />
         <div className="absolute -top-40 left-1/2 h-112 w-md -translate-x-1/2 rounded-full bg-indigo-500/15 blur-3xl" />
-        <div className="absolute bottom-[-12rem] -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute bottom-48 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute -right-40 top-56 h-104 w-104 rounded-full bg-violet-500/10 blur-3xl" />
       </div>
 
@@ -81,7 +81,7 @@ export default function InsightsClient() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/30 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white text-black font-bold">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white font-bold text-black">
               C
             </div>
             <div className="leading-tight">
@@ -112,7 +112,7 @@ export default function InsightsClient() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }} // ✅ sin ease array
+          transition={{ duration: 0.5 }}
           className="grid gap-4 md:grid-cols-4"
         >
           <KpiCard
