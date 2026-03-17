@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LEAD_ENDPOINT } from "@/lib/config";
 
 type Lang = "en" | "es";
 
@@ -11,6 +10,23 @@ type Props = {
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function parseApproxCrs(value: string): number | null {
+  const v = value.trim();
+  if (!v) return null;
+
+  // keep only digits
+  const digitsOnly = v.replace(/[^\d]/g, "");
+  if (!digitsOnly) return null;
+
+  const n = Number(digitsOnly);
+  if (!Number.isFinite(n)) return null;
+
+  // basic sanity range (optional)
+  if (n < 0 || n > 1500) return null;
+
+  return Math.round(n);
 }
 
 export default function LeadForm({ lang = "en" }: Props) {
@@ -37,6 +53,7 @@ export default function LeadForm({ lang = "en" }: Props) {
       errBody: "Please try again in a moment.",
       helper:
         "No spam. Unsubscribe anytime. Informational tool — not legal or immigration advice.",
+      invalidEmail: "Invalid email.",
     };
 
     const es = {
@@ -53,6 +70,7 @@ export default function LeadForm({ lang = "en" }: Props) {
       errBody: "Intenta de nuevo en un momento.",
       helper:
         "Cero spam. Puedes salir cuando quieras. Herramienta informativa — no es asesoría legal o migratoria.",
+      invalidEmail: "Email inválido.",
     };
 
     return lang === "es" ? es : en;
@@ -64,20 +82,10 @@ export default function LeadForm({ lang = "en" }: Props) {
     e.preventDefault();
     setErrorMsg("");
 
-    const trimmed = email.trim();
-    if (!isValidEmail(trimmed)) {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(trimmedEmail)) {
       setStatus("error");
-      setErrorMsg(lang === "es" ? "Email inválido." : "Invalid email.");
-      return;
-    }
-
-    if (!LEAD_ENDPOINT.googleAppsScriptUrl) {
-      setStatus("error");
-      setErrorMsg(
-        lang === "es"
-          ? "Falta configurar la URL del Google Script."
-          : "Google Script URL is not configured."
-      );
+      setErrorMsg(copy.invalidEmail);
       return;
     }
 
@@ -85,28 +93,25 @@ export default function LeadForm({ lang = "en" }: Props) {
 
     try {
       const payload = {
-        email: trimmed,
-        crs: crs.trim(),
-        worry: worry.trim(),
+        email: trimmedEmail,
+        approxCrs: parseApproxCrs(crs), // number | null
+        worries: worry.trim() || null,
         source: "landing",
         lang,
       };
 
-      const res = await fetch(LEAD_ENDPOINT.googleAppsScriptUrl, {
+      const res = await fetch("/api/leads", {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const text = await res.text();
-
-      if (!res.ok) throw new Error(text || "Request failed");
-
-      try {
-        const json = JSON.parse(text) as { ok?: boolean; error?: string };
-        if (json?.ok === false) throw new Error(json?.error || "Server error");
-      } catch {
-        // ignore parse errors
+      const data = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+  
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || copy.errBody);
       }
 
       setStatus("success");
@@ -144,6 +149,8 @@ export default function LeadForm({ lang = "en" }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
               disabled={disabled}
+              inputMode="email"
+              autoComplete="email"
               className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/40"
             />
           </label>
@@ -155,6 +162,7 @@ export default function LeadForm({ lang = "en" }: Props) {
               onChange={(e) => setCrs(e.target.value)}
               placeholder="e.g., 472"
               disabled={disabled}
+              inputMode="numeric"
               className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/40"
             />
           </label>
@@ -175,11 +183,10 @@ export default function LeadForm({ lang = "en" }: Props) {
             />
           </label>
 
-          {/* ✅ back to Tailwind v3-friendly gradient */}
           <button
             type="submit"
             disabled={disabled}
-            className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-50"
+            className="w-full rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-50"
           >
             {disabled ? copy.sending : copy.btn}
           </button>

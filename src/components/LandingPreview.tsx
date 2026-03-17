@@ -36,20 +36,20 @@ export default function LandingPreview() {
     >
       <motion.div
         variants={item}
-        className="rounded-3xl border border-white/10 bg-black/60 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur"
+        className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm"
       >
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-white">
+            <div className="text-sm font-semibold text-gray-900">
               Live Insights & Draw History
             </div>
-            <div className="mt-1 text-sm text-white/70">
+            <div className="mt-1 text-sm text-gray-700">
               Track Express Entry draws, trends, and official updates — in one place.
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
+          <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-800">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             New section
           </div>
@@ -60,28 +60,28 @@ export default function LandingPreview() {
           {/* Card 1 */}
           <motion.div
             variants={item}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+            className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm"
           >
-            <div className="text-xs text-white/60">Latest draw</div>
+            <div className="text-xs text-gray-500">Latest draw</div>
             <div className="mt-2 flex items-baseline justify-between">
-              <div className="text-lg font-semibold text-white">CRS 491</div>
-              <div className="text-xs font-semibold text-emerald-300">+3.2%</div>
+              <div className="text-lg font-semibold text-gray-900">CRS 491</div>
+              <div className="text-xs font-semibold text-emerald-700">+3.2%</div>
             </div>
-            <div className="mt-2 text-sm text-white/70">
-              Snapshot: cut-off points and category overview.
+            <div className="mt-2 text-sm text-gray-700">
+              Latest cut-off + invitations. Open Insights for the full breakdown.
             </div>
           </motion.div>
 
           {/* Card 2 */}
           <motion.div
             variants={item}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+            className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm"
           >
-            <div className="text-xs text-white/60">Trend (90d)</div>
-            <div className="mt-2 text-lg font-semibold text-white">
+            <div className="text-xs text-gray-500">Trend (90d)</div>
+            <div className="mt-2 text-lg font-semibold text-gray-900">
               Stable → Slightly up
             </div>
-            <div className="mt-2 text-sm text-white/70">
+            <div className="mt-2 text-sm text-gray-700">
               Visual charts for cut-offs, invitations, and categories.
             </div>
           </motion.div>
@@ -89,13 +89,13 @@ export default function LandingPreview() {
           {/* Card 3 */}
           <motion.div
             variants={item}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+            className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm"
           >
-            <div className="text-xs text-white/60">Official news</div>
-            <div className="mt-2 text-lg font-semibold text-white">
+            <div className="text-xs text-gray-500">Official news</div>
+            <div className="mt-2 text-lg font-semibold text-gray-900">
               Trusted sources only
             </div>
-            <div className="mt-2 text-sm text-white/70">
+            <div className="mt-2 text-sm text-gray-700">
               Curated headlines + direct source links.
             </div>
           </motion.div>
@@ -104,24 +104,33 @@ export default function LandingPreview() {
         {/* CTA */}
         <motion.div
           variants={item}
-          className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-linear-to-r from-white/5 to-white/0 p-4"
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-linear-to-r from-indigo-50 to-white p-5"
         >
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-gray-700">
             Want the full dashboard experience?
-            <span className="ml-2 text-white/90 font-semibold">
+            <span className="ml-2 text-gray-900 font-semibold">
               Open the Simulator & Insights
             </span>
           </div>
 
-          <Link
-            href="/simulator"
-            className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-          >
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-xs">
-              ↗
-            </span>
-            Open dashboard
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/simulator"
+              className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-xs">
+                ↗
+              </span>
+              Open simulator
+            </Link>
+
+            <Link
+              href="/insights"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            >
+              View insights
+            </Link>
+          </div>
         </motion.div>
       </motion.div>
     </motion.section>

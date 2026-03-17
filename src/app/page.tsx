@@ -163,11 +163,9 @@ export default function Page() {
 
   const ui = {
     en: {
-      navCta: "Early access",
       ctaPrimary: "Get access",
       ctaSecondary: "How it works",
       micro: "No spam. 1 minute. You’ll get invited to the private beta.",
-      badge: "PGWP → CEC → Express Entry",
       statusPill: "Private beta building now",
       painTitle: "Stuck around 465–485 CRS?",
       painBody:
@@ -185,11 +183,9 @@ export default function Page() {
         "Disclaimer: informational tool based on public sources. Not legal or immigration advice.",
     },
     es: {
-      navCta: "Acceso anticipado",
       ctaPrimary: "Quiero acceso",
       ctaSecondary: "Cómo funciona",
       micro: "Cero spam. 1 minuto. Te invito a la beta privada cuando esté lista.",
-      badge: "PGWP → CEC → Express Entry",
       statusPill: "Beta privada en progreso",
       painTitle: "¿Atorado en 465–485 CRS?",
       painBody:
@@ -212,36 +208,13 @@ export default function Page() {
     <main className="min-h-screen bg-white">
       {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-white" />
-        <div className="absolute -top-40 left-1/2 h-80 w-[52rem] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute top-40 right-[-8rem] h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-linear-to-b from-slate-50 via-white to-white" />
+        <div className="absolute -top-40 left-1/2 h-80 w-208 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute top-40 -right-32 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="mx-auto max-w-6xl px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white font-semibold">
-              C
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-gray-900">{APP.name}</div>
-              <div className="text-xs text-gray-600">{ui.badge}</div>
-            </div>
-          </div>
-
-          {/* ✅ Make it visible (not washed out) */}
-          <a
-            href="#access"
-            className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50"
-          >
-            {ui.navCta}
-          </a>
-        </div>
-      </header>
-
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-14 pt-6">
+      <section className="mx-auto max-w-6xl px-4 pb-14 pt-20">
         <div className="grid gap-10 md:grid-cols-2 md:items-start">
           {/* Left */}
           <div>
@@ -266,7 +239,7 @@ export default function Page() {
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
                 href="#access"
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95"
+                className="rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 px-4 py-2 font-semibold text-white shadow-md hover:opacity-95"
               >
                 {ui.ctaPrimary}
               </a>
@@ -337,7 +310,7 @@ export default function Page() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="text-sm font-semibold text-gray-900">{o.title}</div>
-                      <div className="shrink-0 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-1 text-sm font-semibold text-white">
+                      <div className="shrink-0 rounded-full bg-linear-to-r from-indigo-600 to-blue-600 px-3 py-1 text-sm font-semibold text-white">
                         {o.points}
                       </div>
                     </div>
@@ -376,7 +349,7 @@ export default function Page() {
           </div>
 
           {/* Right */}
-          <div id="access" className="md:sticky md:top-6">
+          <div id="access" className="md:sticky md:top-24">
             <div className="rounded-3xl border border-black/10 bg-white/80 p-3 shadow-lg backdrop-blur">
               <LeadForm lang={lang} />
             </div>

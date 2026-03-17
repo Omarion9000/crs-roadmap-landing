@@ -1,15 +1,4 @@
-// src/lib/sim/roi.ts
-
-export type FrenchLevel = "none" | "b1" | "b2";
-
-export type Baseline = {
-  crs: number;
-  clb: 7 | 8 | 9 | 10;
-  cecMonths: number;
-  hasFrench: FrenchLevel;
-  hasPNP: boolean;
-  hasJobOffer: boolean;
-};
+export type RoiEffort = "Low" | "Medium" | "High";
 
 export type ImprovementKey =
   | "ielts_clb9"
@@ -20,7 +9,14 @@ export type ImprovementKey =
   | "job_offer"
   | "pnp";
 
-export type RoiEffort = "Low" | "Medium" | "High";
+export type Baseline = {
+  crs: number;
+  clb: 7 | 8 | 9 | 10;
+  cecMonths: number; // 0..36
+  hasFrench: "none" | "b1" | "b2";
+  hasPNP: boolean;
+  hasJobOffer: boolean;
+};
 
 export type RoiRow = {
   key: ImprovementKey;
@@ -31,111 +27,79 @@ export type RoiRow = {
   why: string;
 };
 
-// ✅ Compat: si tu SimulatorMVP lo usa, aquí está.
-export function calculateCRSMvp(baseline: Baseline): number {
-  // MVP: por ahora regresamos el CRS base que el usuario pone.
-  // Más adelante aquí pondremos lógica real.
-  return baseline.crs;
-}
-
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-function estimateImprovementRange(
-  baseline: Baseline,
-  key: ImprovementKey
-): { min: number; max: number; effort: RoiEffort; why: string } {
-  const clb = baseline.clb;
-  const cec = baseline.cecMonths;
-  const french = baseline.hasFrench;
+/**
+ * MVP “estimate” model.
+ * NOT official CRS math.
+ */
+export function buildRoiTable(b: Baseline): RoiRow[] {
+  const clb = b.clb;
+  const cecMonths = clamp(b.cecMonths, 0, 36);
 
-  switch (key) {
-    case "ielts_clb9": {
-      const bump =
-        clb >= 9
-          ? { min: 0, max: 6 }
-          : clb === 8
-          ? { min: 25, max: 55 }
-          : { min: 35, max: 70 };
-
-      return { ...bump, effort: "High", why: "CLB 9 often unlocks skill-transfer boosts." };
-    }
-
-    case "ielts_clb10": {
-      const bump =
-        clb >= 10 ? { min: 0, max: 4 } : clb === 9 ? { min: 6, max: 18 } : { min: 10, max: 25 };
-
-      return { ...bump, effort: "High", why: "Incremental gains after CLB 9." };
-    }
-
-    case "french_b1": {
-      const bump = french === "none" ? { min: 8, max: 25 } : { min: 0, max: 6 };
-      return { ...bump, effort: "High", why: "French can add bonus points (profile-dependent)." };
-    }
-
-    case "french_b2": {
-      const bump =
-        french === "b2"
-          ? { min: 0, max: 6 }
-          : french === "b1"
-          ? { min: 10, max: 35 }
-          : { min: 20, max: 62 };
-
-      return { ...bump, effort: "High", why: "French at B2 can be a major lever for some profiles." };
-    }
-
-    case "cec_12m": {
-      const to12 = 12 - cec;
-      const bump =
-        to12 <= 0 ? { min: 0, max: 8 } : to12 <= 2 ? { min: 10, max: 35 } : { min: 4, max: 20 };
-
-      return { ...bump, effort: "Medium", why: "CEC milestone can increase points (time-based)." };
-    }
-
-    case "job_offer": {
-      const bump = baseline.hasJobOffer ? { min: 0, max: 8 } : { min: 10, max: 50 };
-      return { ...bump, effort: "High", why: "Job offers vary by conditions." };
-    }
-
-    case "pnp": {
-      const bump = baseline.hasPNP ? { min: 0, max: 0 } : { min: 600, max: 600 };
-      return { ...bump, effort: "High", why: "PNP nomination adds 600 points." };
-    }
-  }
-}
-
-export function buildRoiTable(baseline: Baseline): RoiRow[] {
-  // ✅ Esto fuerza a que `key` sea ImprovementKey (no string)
-  const base: { key: ImprovementKey; label: string }[] = [
-    { key: "ielts_clb9", label: "IELTS → CLB 9" },
-    { key: "ielts_clb10", label: "IELTS → CLB 10" },
-    { key: "french_b1", label: "French → B1" },
-    { key: "french_b2", label: "French → B2" },
-    { key: "cec_12m", label: "Canadian experience → 12 months" },
-    { key: "job_offer", label: "Valid job offer" },
-    { key: "pnp", label: "PNP nomination" },
+  const base: RoiRow[] = [
+    {
+      key: "ielts_clb9",
+      label: "IELTS → CLB 9",
+      ptsMin: clb >= 9 ? 0 : 35,
+      ptsMax: clb >= 9 ? 0 : 55,
+      effort: "High",
+      why: "Often unlocks strong skill transferability.",
+    },
+    {
+      key: "ielts_clb10",
+      label: "IELTS → CLB 10",
+      ptsMin: clb >= 10 ? 0 : clb >= 9 ? 8 : 20,
+      ptsMax: clb >= 10 ? 0 : clb >= 9 ? 18 : 35,
+      effort: "High",
+      why: "Extra gain after CLB 9; smaller incremental ROI.",
+    },
+    {
+      key: "french_b1",
+      label: "French → B1",
+      ptsMin: b.hasFrench === "none" ? 10 : 0,
+      ptsMax: b.hasFrench === "none" ? 25 : 0,
+      effort: "High",
+      why: "May add bonus points depending on profile.",
+    },
+    {
+      key: "french_b2",
+      label: "French → B2",
+      ptsMin: b.hasFrench === "b2" ? 0 : b.hasFrench === "b1" ? 10 : 20,
+      ptsMax: b.hasFrench === "b2" ? 0 : b.hasFrench === "b1" ? 35 : 62,
+      effort: "High",
+      why: "Can be a major boost for many candidates.",
+    },
+    {
+      key: "cec_12m",
+      label: "Canadian experience → 12 months",
+      ptsMin: cecMonths >= 12 ? 0 : 10,
+      ptsMax: cecMonths >= 12 ? 0 : 35,
+      effort: "Medium",
+      why: "Time-based milestone (CEC) that can add points.",
+    },
+    {
+      key: "job_offer",
+      label: "Valid job offer",
+      ptsMin: b.hasJobOffer ? 0 : 10,
+      ptsMax: b.hasJobOffer ? 0 : 50,
+      effort: "High",
+      why: "Only if it meets validity/eligibility conditions.",
+    },
+    {
+      key: "pnp",
+      label: "PNP nomination",
+      ptsMin: b.hasPNP ? 0 : 600,
+      ptsMax: b.hasPNP ? 0 : 600,
+      effort: "High",
+      why: "Transformational boost if nominated.",
+    },
   ];
 
-  const rows: RoiRow[] = base.map((r) => {
-    const est = estimateImprovementRange(baseline, r.key);
-    return {
-      key: r.key,
-      label: r.label,
-      ptsMin: est.min,
-      ptsMax: est.max,
-      effort: est.effort,
-      why: est.why,
-    };
-  });
-
-  // ROI proxy: midpoint desc, then min desc
-  return rows.sort((a, b) => {
-    const midA = (a.ptsMin + a.ptsMax) / 2;
-    const midB = (b.ptsMin + b.ptsMax) / 2;
-    if (midB !== midA) return midB - midA;
-    return b.ptsMin - a.ptsMin;
-  });
+  // sort by ptsMax desc, tie-breaker ptsMin desc
+  return base.sort((a, c) => c.ptsMax - a.ptsMax || c.ptsMin - a.ptsMin);
 }
 
 export function applySelected(
@@ -144,19 +108,17 @@ export function applySelected(
 ): { min: number; max: number } {
   const table = buildRoiTable(baseline);
 
-  let min = baseline.crs;
-  let max = baseline.crs;
+  let addMin = 0;
+  let addMax = 0;
 
   for (const row of table) {
     if (selected[row.key]) {
-      min += row.ptsMin;
-      max += row.ptsMax;
+      addMin += row.ptsMin;
+      addMax += row.ptsMax;
     }
   }
 
-  min = clamp(min, 0, 1200);
-  max = clamp(max, 0, 1200);
-  if (max < min) [min, max] = [max, min];
-
+  const min = Math.max(0, Math.round(baseline.crs + addMin));
+  const max = Math.max(min, Math.round(baseline.crs + addMax));
   return { min, max };
 }
