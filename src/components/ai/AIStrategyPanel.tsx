@@ -453,6 +453,9 @@ export default function AIStrategyPanel({
             <div className="mt-4 rounded-[20px] border border-white/10 bg-black/20 p-4 text-sm leading-7 text-white/76">
               Get complete execution steps, sequencing, and a personalized strategy built specifically for your CRS profile.
             </div>
+            <div className="mt-4 rounded-[20px] border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-7 text-blue-50/90">
+              You already know your strongest move. Unlock Pro to see exactly how to execute it.
+            </div>
           </div>
 
           {preview?.whyThisMatters ? (
@@ -502,7 +505,9 @@ export default function AIStrategyPanel({
                 <div>• alternative paths if this fails</div>
                 <div>• long-term CRS optimization strategy</div>
               </div>
-              <div className="mt-2 font-medium text-cyan-100">Unlock to see everything.</div>
+              <div className="mt-3 font-medium text-cyan-100">
+                Unlock to see everything and turn this preview into a complete execution plan.
+              </div>
             </div>
           </div>
         </div>

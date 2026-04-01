@@ -422,16 +422,16 @@ export default async function DashboardPage({
               </div>
             ) : proAccess ? (
               <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/20 p-6 text-sm text-white/60">
-                <div className="font-semibold text-white">Generate my full strategy</div>
+                <div className="font-semibold text-white">You haven’t unlocked your full strategy yet</div>
                 <div className="mt-2">
-                  Open the simulator, generate an AI strategy, then save your roadmap to make this your strategic command center.
+                  Upgrade to Pro to generate and track your personalized roadmap, then restore it here as your strategic command center.
                 </div>
                 <div className="mt-4">
                   <Link
                     href="/simulator"
                     className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
                   >
-                    Open simulator
+                    Generate my full strategy
                   </Link>
                 </div>
               </div>

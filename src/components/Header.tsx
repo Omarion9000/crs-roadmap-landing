@@ -9,7 +9,18 @@ import type { User } from "@supabase/supabase-js";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [uiLang, setUiLang] = useState<"en" | "es">("en");
+  const [uiLang, setUiLang] = useState<"en" | "es">(() => {
+    if (typeof window === "undefined") {
+      return "en";
+    }
+
+    try {
+      const saved = window.localStorage.getItem("crs_ui_lang");
+      return saved === "en" || saved === "es" ? saved : "en";
+    } catch {
+      return "en";
+    }
+  });
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,17 +52,6 @@ export default function Header() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem("crs_ui_lang");
-      if (saved === "en" || saved === "es") {
-        setUiLang(saved);
-      }
-    } catch {
-      // ignore local storage failures
-    }
   }, []);
 
   const setLanguage = (nextLang: "en" | "es") => {

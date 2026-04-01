@@ -46,7 +46,7 @@ export default function PremiumLockedPanel({
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/68">{description}</p>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/56">
-            Unlock the full strategy behind this preview with deeper planning, clearer sequencing, and roadmap continuity.
+            Unlock the full strategy behind this preview with clearer sequencing, trade-offs, alternatives, and roadmap continuity.
           </p>
         </div>
 

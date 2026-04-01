@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import SimulatorMVP from "@/components/SimulatorMVP";
 
 export default function SimulatorPage() {
@@ -14,7 +15,15 @@ export default function SimulatorPage() {
       </div>
 
       <section className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
-        <SimulatorMVP />
+        <Suspense
+          fallback={
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-5 text-sm text-white/64 backdrop-blur-xl">
+              Loading your simulator...
+            </div>
+          }
+        >
+          <SimulatorMVP />
+        </Suspense>
       </section>
     </main>
   );

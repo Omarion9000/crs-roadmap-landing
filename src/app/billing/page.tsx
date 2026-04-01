@@ -201,7 +201,7 @@ export default async function BillingPage({
                 </div>
                 <div className="mt-3 text-2xl font-bold">$9.99 CAD / month</div>
                 <div className="mt-2 text-xs font-medium text-blue-100/80">
-                  Early access — price increases soon
+                  Early access pricing — future $19/mo
                 </div>
                 <div className="mt-5 text-xl font-semibold text-white">
                   Turn your CRS into a clear PR strategy
@@ -218,6 +218,9 @@ export default async function BillingPage({
                   <li>• Monthly AI strategy generations</li>
                   <li>• Personal roadmap continuity</li>
                 </ul>
+                <div className="mt-4 text-sm text-blue-100/72">
+                  A fraction of the cost of a single consultation — with continuous strategy guidance.
+                </div>
                 <div className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/72">
                   A fraction of the cost of a single consultation - with continuous strategy guidance.
                 </div>

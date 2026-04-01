@@ -32,7 +32,7 @@ export default function LockedInsightBlock({
           </div>
           <div className="mt-1 text-lg font-semibold text-white">{title}</div>
           <div className="mt-1 text-sm text-white/62">
-            Turn this preview into a complete roadmap with the full execution layer.
+            You already have the signal. Unlock the step-by-step execution layer, sequencing, trade-offs, and continuity behind it.
           </div>
         </div>
       </div>

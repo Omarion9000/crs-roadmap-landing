@@ -92,7 +92,7 @@ const pricingPlans = [
     badge: "BEST VALUE",
     price: "$9.99 CAD / month",
     description: "Unlock your full PR roadmap",
-    subtext: "Early access pricing — increases soon",
+    subtext: "Early access pricing — future $19/mo",
     features: [
       "Full AI-generated strategy",
       "Step-by-step execution plan",
@@ -126,7 +126,7 @@ function Section({
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      className="py-24"
+      className="py-20"
     >
       <div className="mx-auto max-w-6xl px-6">
         <motion.div variants={itemVariants} className="max-w-3xl">
@@ -183,7 +183,7 @@ export default function PremiumHome() {
         <div className="absolute inset-0 bg-linear-to-b from-[#091120] via-[#070A12] to-black" />
       </div>
 
-      <section className="py-24">
+      <section className="py-18 lg:py-20">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr]">
           <motion.div
             variants={containerVariants}
@@ -202,9 +202,9 @@ export default function PremiumHome() {
               variants={itemVariants}
               className="mt-6 text-5xl font-semibold tracking-tight text-white sm:text-6xl"
             >
-              Stop guessing your CRS score.
+              Stop guessing your CRS path.
               <span className="mt-2 block bg-linear-to-r from-cyan-200 via-blue-200 to-violet-200 bg-clip-text text-transparent">
-                Get a clear roadmap to PR
+                Get a clear roadmap to PR.
               </span>
             </motion.h1>
 
@@ -212,7 +212,7 @@ export default function PremiumHome() {
               variants={itemVariants}
               className="mt-6 text-lg leading-8 text-white/64"
             >
-              Know exactly what to do next to increase your CRS — with AI-powered strategy, not just a calculator.
+              See your strongest next move, understand why it matters, and unlock a strategy built around your real profile.
             </motion.p>
 
             <motion.div variants={itemVariants} className="mt-8 flex flex-wrap gap-3">
@@ -438,6 +438,9 @@ export default function PremiumHome() {
       </Section>
 
       <Section title="Start free. Unlock depth when you need the full roadmap." eyebrow="Pricing">
+        <motion.div variants={itemVariants} className="mb-6 text-sm text-white/58">
+          Most users unlock Pro after seeing their first roadmap preview.
+        </motion.div>
         <motion.div variants={containerVariants} className="grid gap-4 lg:grid-cols-2">
           {pricingPlans.map((plan) => (
             <motion.div
@@ -479,7 +482,7 @@ export default function PremiumHome() {
                   className={[
                     "inline-flex rounded-full px-6 py-3 text-sm font-medium transition",
                     plan.name === "PRO"
-                      ? "bg-white text-black hover:bg-gray-200"
+                      ? "bg-white text-black shadow-[0_18px_44px_-18px_rgba(255,255,255,0.65)] hover:bg-gray-200"
                       : "border border-white/15 bg-white/5 text-white hover:bg-white/10",
                   ].join(" ")}
                 >
@@ -494,13 +497,13 @@ export default function PremiumHome() {
       <Section title="Start your roadmap today" eyebrow="Final CTA">
         <motion.div
           variants={itemVariants}
-          className="rounded-[36px] border border-white/10 bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(255,255,255,0.03),rgba(99,102,241,0.08))] p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_90px_-58px_rgba(59,130,246,0.35)] backdrop-blur-xl"
+          className="rounded-[36px] border border-white/10 bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(255,255,255,0.03),rgba(99,102,241,0.08))] p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_90px_-58px_rgba(59,130,246,0.35)] backdrop-blur-xl"
         >
           <div className="max-w-3xl">
-            <div className="text-lg leading-8 text-white/68">
+            <div className="text-base leading-7 text-white/68">
               Stop calculating in circles. Use your profile, see your strongest path, and turn your next move into a roadmap.
             </div>
-            <div className="mt-6">
+            <div className="mt-5">
               <Link
                 href="/start"
                 onClick={() => trackFunnelEvent("landing_cta_clicked", { location: "final-cta" })}
