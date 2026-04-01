@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe";
+import { buildPostUpgradeHref, type UpgradeUnlock } from "@/lib/upgrade";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -20,6 +21,21 @@ export async function POST() {
 
     const priceId = process.env.STRIPE_PRICE_PRO;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const body = (await req.json().catch(() => null)) as
+      | { returnTo?: string; unlock?: UpgradeUnlock }
+      | null;
+    const returnTo = typeof body?.returnTo === "string" ? body.returnTo : null;
+    const unlock = body?.unlock ?? "pro";
+    const successPath = buildPostUpgradeHref(returnTo, unlock);
+    const cancelParams = new URLSearchParams({ canceled: "true" });
+
+    if (returnTo) {
+      cancelParams.set("returnTo", returnTo);
+    }
+
+    if (unlock) {
+      cancelParams.set("unlock", unlock);
+    }
 
     if (!priceId) {
       return NextResponse.json(
@@ -29,22 +45,6 @@ export async function POST() {
     }
 
     const stripe = getStripeServer();
-    console.log("CHECKOUT DEBUG");
-    console.log("priceId =", priceId);
-    console.log("user.email =", user.email);
-
-    const account = await stripe.accounts.retrieve();
-    console.log("stripe account id =", account.id);
-
-    const prices = await stripe.prices.list({ limit: 10 });
-    console.log(
-      "available price ids =",
-      prices.data.map((p) => p.id)
-    );
-
-    const debugPrice = await stripe.prices.retrieve(priceId);
-    console.log("debugPrice.id =", debugPrice.id);
-    console.log("debugPrice.product =", debugPrice.product);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -56,21 +56,29 @@ export async function POST() {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/billing?success=true`,
-      cancel_url: `${appUrl}/billing?canceled=true`,
+      success_url: `${appUrl}${successPath}`,
+      cancel_url: `${appUrl}/billing?${cancelParams.toString()}`,
       metadata: {
         user_id: user.id,
         email: user.email,
         plan: "pro",
+        unlock,
+        return_to: returnTo ?? "",
       },
       subscription_data: {
         metadata: {
           user_id: user.id,
           email: user.email,
           plan: "pro",
+          unlock,
+          return_to: returnTo ?? "",
         },
       },
     });
+
+    if (!session.url) {
+      throw new Error("Stripe checkout session did not return a URL");
+    }
 
     return NextResponse.json({
       ok: true,

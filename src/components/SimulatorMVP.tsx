@@ -1,14 +1,34 @@
 // src/components/SimulatorMVP.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { simulate } from "@/lib/crs/api";
+import {
+  clearStoredBaseProfile,
+  getBaseProfileOwnerKey,
+  persistStoredBaseProfile,
+  readAnyStoredBaseProfile,
+  readStoredBaseProfile,
+  type StoredBaseProfilePayload,
+} from "@/lib/crs/baseProfile";
 import type { Lang, Profile, ScenarioResult } from "@/lib/crs/types";
 import type { User } from "@supabase/supabase-js";
 import { getBenchmark } from "@/lib/insights/api";
 import type { ProgramKey, BenchmarkData } from "@/lib/insights/api";
+import SimulatorHero from "@/components/simulator/SimulatorHero";
+import MarketOverview from "@/components/simulator/MarketOverview";
+import ProfileSummaryPanel from "@/components/simulator/ProfileSummaryPanel";
+import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
+import AIStrategyPanel from "@/components/ai/AIStrategyPanel";
+import { trackFunnelEvent, trackFunnelEventOnce } from "@/lib/funnel";
+import { buildRecommendationSummary } from "@/lib/strategy/recommendationSummary";
+import { buildBillingHref, buildLoginHref, upgradeSuccessMessage } from "@/lib/upgrade";
+import { greetingLabel, roadmapDisplayName } from "@/lib/personalization";
+import type { AIStrategyRecommendation } from "@/types/ai-strategy";
 
 // ---------- UI helpers ----------
 function deltaLabel(delta: number) {
@@ -16,13 +36,6 @@ function deltaLabel(delta: number) {
   if (delta >= 80) return "High";
   if (delta >= 45) return "Medium";
   return "Low";
-}
-
-function deltaPillClass(delta: number) {
-  if (delta >= 500) return "bg-emerald-500/20 text-emerald-200 border-emerald-500/30";
-  if (delta >= 80) return "bg-indigo-500/20 text-indigo-200 border-indigo-500/30";
-  if (delta >= 45) return "bg-blue-500/20 text-blue-200 border-blue-500/30";
-  return "bg-white/10 text-white/70 border-white/10";
 }
 
 function clampInt(value: number, min: number, max: number) {
@@ -90,49 +103,204 @@ function zonePillClass(z: Zone) {
   }
 }
 
-function zoneGradient(z: Zone) {
-  switch (z) {
-    case "nomination":
-      return "from-emerald-400/25 via-emerald-500/15 to-cyan-400/10";
-    case "strong":
-      return "from-emerald-400/25 via-emerald-500/15 to-cyan-400/10";
-    case "competitive":
-      return "from-blue-400/25 via-indigo-500/15 to-cyan-400/10";
-    case "borderline":
-      return "from-indigo-400/25 via-violet-500/15 to-fuchsia-400/10";
-    default:
-      return "from-red-400/25 via-rose-500/15 to-amber-400/10";
+function scenarioAccent(id: string) {
+  if (id === "pnp") {
+    return {
+      ring: "border-fuchsia-500/25",
+      glow: "from-fuchsia-500/20 via-violet-500/10 to-cyan-500/5",
+      chip: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200",
+      artA: "bg-linear-to-br from-fuchsia-400/90 to-violet-500/80",
+      artB: "bg-linear-to-br from-white/80 to-fuchsia-200/70",
+      text: "text-fuchsia-100",
+      shadow: "shadow-[0_20px_60px_-40px_rgba(217,70,239,0.45)]",
+    };
   }
+
+  if (id.includes("french")) {
+    return {
+      ring: "border-cyan-500/25",
+      glow: "from-cyan-500/20 via-sky-500/10 to-indigo-500/5",
+      chip: "border-cyan-500/30 bg-cyan-500/10 text-cyan-100",
+      artA: "bg-linear-to-br from-cyan-400/90 to-sky-500/80",
+      artB: "bg-linear-to-br from-white/80 to-cyan-200/70",
+      text: "text-cyan-100",
+      shadow: "shadow-[0_20px_60px_-40px_rgba(34,211,238,0.45)]",
+    };
+  }
+
+  if (id.includes("ielts") || id.includes("english")) {
+    return {
+      ring: "border-indigo-500/25",
+      glow: "from-indigo-500/20 via-blue-500/10 to-cyan-500/5",
+      chip: "border-indigo-500/30 bg-indigo-500/10 text-indigo-100",
+      artA: "bg-linear-to-br from-indigo-400/90 to-blue-500/80",
+      artB: "bg-linear-to-br from-white/80 to-indigo-200/70",
+      text: "text-indigo-100",
+      shadow: "shadow-[0_20px_60px_-40px_rgba(99,102,241,0.45)]",
+    };
+  }
+
+  if (id.includes("cec") || id.includes("experience")) {
+    return {
+      ring: "border-emerald-500/25",
+      glow: "from-emerald-500/20 via-teal-500/10 to-cyan-500/5",
+      chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+      artA: "bg-linear-to-br from-emerald-400/90 to-teal-500/80",
+      artB: "bg-linear-to-br from-white/80 to-emerald-200/70",
+      text: "text-emerald-100",
+      shadow: "shadow-[0_20px_60px_-40px_rgba(16,185,129,0.45)]",
+    };
+  }
+
+  if (id.includes("job")) {
+    return {
+      ring: "border-amber-500/25",
+      glow: "from-amber-500/20 via-orange-500/10 to-yellow-500/5",
+      chip: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+      artA: "bg-linear-to-br from-amber-400/90 to-orange-500/80",
+      artB: "bg-linear-to-br from-white/80 to-amber-200/70",
+      text: "text-amber-100",
+      shadow: "shadow-[0_20px_60px_-40px_rgba(245,158,11,0.45)]",
+    };
+  }
+
+  return {
+    ring: "border-white/10",
+    glow: "from-white/10 via-white/5 to-transparent",
+    chip: "border-white/10 bg-white/5 text-white/80",
+    artA: "bg-linear-to-br from-white/80 to-white/30",
+    artB: "bg-linear-to-br from-white/90 to-white/50",
+    text: "text-white",
+    shadow: "shadow-[0_20px_60px_-40px_rgba(255,255,255,0.15)]",
+  };
 }
 
-function zoneIcon(z: Zone) {
-  switch (z) {
-    case "nomination":
-      return "✅";
-    case "strong":
-      return "✅";
-    case "competitive":
-      return "⚡";
-    case "borderline":
-      return "🧭";
-    default:
-      return "⛔";
-  }
+function scenarioArtLabel(id: string) {
+  if (id === "pnp") return "PNP";
+  if (id.includes("french")) return "FR";
+  if (id.includes("ielts") || id.includes("english")) return "EN";
+  if (id.includes("cec") || id.includes("experience")) return "EXP";
+  if (id.includes("job")) return "JOB";
+  return "CRS";
 }
 
-function zoneHeadlinePrefix(z: Zone) {
-  switch (z) {
-    case "nomination":
-      return "Nomination level";
-    case "strong":
-      return "Strong position";
-    case "competitive":
-      return "Competitive";
-    case "borderline":
-      return "Borderline";
-    default:
-      return "Very unlikely";
+function projectedOutcomeTone(projectedGap: number) {
+  if (projectedGap <= 0) {
+    return {
+      pill: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+      label: "Above cutoff",
+    };
   }
+
+  if (projectedGap <= 15) {
+    return {
+      pill: "border-blue-500/30 bg-blue-500/10 text-blue-200",
+      label: "Borderline",
+    };
+  }
+
+  if (projectedGap <= 40) {
+    return {
+      pill: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
+      label: "Close range",
+    };
+  }
+
+  return {
+    pill: "border-red-500/30 bg-red-500/10 text-red-200",
+    label: "Far below cutoff",
+  };
+}
+
+const getScenarioImage = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("french")) return "/assets/brain.png";
+  if (t.includes("ielts") || t.includes("english")) return "/assets/growth.png";
+  if (t.includes("pnp")) return "/assets/shield.png";
+  return null;
+};
+
+const getScenarioGradient = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("french")) {
+    return "from-cyan-500/25 via-blue-500/12 to-indigo-500/20";
+  }
+  if (t.includes("ielts") || t.includes("english")) {
+    return "from-blue-500/25 via-violet-500/12 to-fuchsia-500/18";
+  }
+  if (t.includes("pnp")) {
+    return "from-fuchsia-500/28 via-violet-500/15 to-indigo-500/18";
+  }
+  return "from-white/10 via-white/5 to-transparent";
+};
+
+function getScenarioParticleClass(title: string) {
+  const t = title.toLowerCase();
+  if (t.includes("french")) return "bg-cyan-200/80";
+  if (t.includes("ielts") || t.includes("english")) return "bg-blue-200/80";
+  if (t.includes("pnp")) return "bg-fuchsia-200/80";
+  return "bg-white/70";
+}
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const staggerShell: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.06,
+    },
+  },
+};
+
+function MotionReveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function GlassPanel({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={[
+        "relative overflow-hidden border border-white/10 bg-white/[0.045] backdrop-blur-xl",
+        "shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_28px_90px_-58px_rgba(99,102,241,0.45)]",
+        className,
+      ].join(" ")}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/[0.08] via-transparent to-transparent" />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
 }
 
 function programLabel(p: ProgramKey) {
@@ -170,16 +338,71 @@ type RoadmapHistoryItem = {
   profile_snapshot: {
     baseCrs?: number;
     effectiveBaseCrs?: number;
+    preferred_name?: string;
     ieltsClb?: number;
     frenchClb?: number;
     canExpYears?: number;
     hasJobOffer?: boolean;
     hasPnp?: boolean;
     lang?: Lang;
+    educationLabel?: string;
+    foreignExperienceLabel?: string;
+    canadianCredentialLabel?: string;
+    profileModeLabel?: string;
+    rawForm?: Record<string, unknown>;
+    ai_strategy?: AIStrategyRecommendation | null;
+    ai_strategy_updated_at?: string;
   };
   program_target: ProgramKey;
   created_at: string;
 };
+
+type SimulationToggleKey =
+  | "english"
+  | "french"
+  | "canadianExperience"
+  | "jobOffer"
+  | "pnp";
+
+type ScenarioOpportunity = {
+  key: SimulationToggleKey;
+  scenarioId: string;
+  title: string;
+  description: string;
+};
+
+const simulationOpportunities: ScenarioOpportunity[] = [
+  {
+    key: "english",
+    scenarioId: "ielts_to_clb9",
+    title: "Improve English to CLB 9",
+    description: "Preview the upside from reaching the high-value English threshold.",
+  },
+  {
+    key: "french",
+    scenarioId: "french_to_b2",
+    title: "Add French B2",
+    description: "Model the jump from stronger French results and bilingual synergy.",
+  },
+  {
+    key: "canadianExperience",
+    scenarioId: "cec_plus_1_year",
+    title: "Gain 1 year Canadian experience",
+    description: "Estimate the next CRS lift from one more year of Canadian work experience.",
+  },
+  {
+    key: "jobOffer",
+    scenarioId: "job_offer",
+    title: "Add qualifying job offer",
+    description: "See the effect of a qualifying job offer on your roadmap options.",
+  },
+  {
+    key: "pnp",
+    scenarioId: "pnp_nomination",
+    title: "Add provincial nomination",
+    description: "Preview the strongest nomination-level jump when PNP is still missing.",
+  },
+];
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -249,37 +472,436 @@ function sparklinePoints(points: DrawPoint[]) {
   return { poly, min, max };
 }
 
-function trendFromHistory(points: DrawPoint[]) {
-  // expects chronological points (oldest -> latest)
-  if (points.length < 2) return 0;
-  const oldest = points[0]?.cutoff;
-  const latest = points[points.length - 1]?.cutoff;
-  if (typeof oldest !== "number" || typeof latest !== "number") return 0;
-  return latest - oldest; // positive => cutoff increased (harder), negative => decreased (easier)
+function mapStoredDataToProfile(payload: StoredBaseProfilePayload): Profile {
+  const base = payload.baseProfile;
+
+  return {
+    baseCrs: clampInt(base.currentCrs, 1, 2000),
+    ieltsClb: clampInt(base.englishClb ?? 0, 0, 10),
+    frenchClb: clampInt(base.frenchClb ?? 0, 0, 10),
+    canExpYears: clampInt(base.canadianExperienceYears ?? 0, 0, 5),
+    hasJobOffer: !!base.hasJobOffer,
+    hasPnp: !!base.hasPnp,
+  };
 }
 
-function trendLabel(delta: number) {
-  if (delta < 0) return `Better (${delta})`; // e.g. -3 means cutoff dropped by 3
-  if (delta > 0) return `Worse (+${delta})`;
-  return "Flat (0)";
+function scenarioAlreadyAchieved(profile: Profile, scenarioId: string) {
+  switch (scenarioId) {
+    case "ielts_to_clb9":
+      return profile.ieltsClb >= 9;
+    case "french_to_b2":
+      return profile.frenchClb >= 9;
+    case "cec_plus_1_year":
+      return profile.canExpYears >= 5;
+    case "job_offer":
+      return profile.hasJobOffer;
+    case "pnp_nomination":
+      return profile.hasPnp;
+    default:
+      return false;
+  }
+}
+
+function strategyHrefForScenario(id: string) {
+  switch (id) {
+    case "french_to_b2":
+      return "/insights/french";
+    case "pnp_nomination":
+      return "/insights/pnp";
+    case "job_offer":
+      return "/insights/job-offer";
+    case "cec_plus_1_year":
+      return "/insights/canadian-experience";
+    case "ielts_to_clb9":
+    default:
+      return "/insights/english";
+  }
+}
+
+function scenarioSummaryText(s: ScenarioResult) {
+  return (
+    ("summary" in s && typeof (s as ScenarioResult & { summary?: string }).summary === "string"
+      ? (s as ScenarioResult & { summary?: string }).summary
+      : s.description) || "Projected improvement based on your current CRS profile and selected program."
+  );
+}
+
+function scenarioNoteText(title: string) {
+  const normalized = title.toLowerCase();
+
+  if (normalized.includes("french")) {
+    return "Useful when French is still missing from your current profile and you want one of the strongest non-PNP jumps.";
+  }
+  if (normalized.includes("ielts") || normalized.includes("english")) {
+    return "Usually one of the fastest score improvements to execute if your English is not yet maxed out.";
+  }
+  if (normalized.includes("job")) {
+    return "Depends on whether the offer qualifies under current Express Entry and work eligibility rules.";
+  }
+  if (normalized.includes("cec") || normalized.includes("experience")) {
+    return "Canadian experience can improve CRS and may also strengthen eligibility positioning.";
+  }
+  if (normalized.includes("pnp")) {
+    return "This is usually the highest possible score jump, but it depends on real provincial eligibility.";
+  }
+
+  return "Use this scenario to compare the score impact against your current profile.";
+}
+
+function projectedScenarioCrs(s: ScenarioResult, profile: Profile, scenarioId: string) {
+  return typeof s.newCrs === "number"
+    ? s.newCrs
+    : profile.baseCrs + s.delta + (profile.hasPnp && scenarioId !== "pnp" ? 600 : 0);
+}
+
+function labelForBoolean(value: boolean, positive = "Yes", negative = "No") {
+  return value ? positive : negative;
+}
+
+type ScenarioOpportunityCardProps = {
+  scenario: ScenarioResult;
+  profile: Profile;
+  cutoff: number;
+  userPlan: "free" | "pro";
+  topTier?: boolean;
+  animated?: boolean;
+};
+
+function ScenarioOpportunityCardInner({
+  scenario,
+  profile,
+  cutoff,
+  userPlan,
+  topTier = false,
+  animated = false,
+}: ScenarioOpportunityCardProps) {
+  const cardModel = useMemo(() => {
+    const scenarioId = scenario.id === "pnp_nomination" ? "pnp" : scenario.id;
+    const accent = scenarioAccent(scenarioId);
+    const artLabel = scenarioArtLabel(scenarioId);
+    const scenarioImage = topTier ? getScenarioImage(scenario.title) : null;
+    const projectedCrs = projectedScenarioCrs(scenario, profile, scenarioId);
+    const projectedGap = cutoff - projectedCrs;
+    const outcomeTone = projectedOutcomeTone(projectedGap);
+    const gradientClass = scenarioImage ? getScenarioGradient(scenario.title) : null;
+    const particleClass = scenarioImage ? getScenarioParticleClass(scenario.title) : null;
+    const summary = scenarioSummaryText(scenario);
+    const note = scenarioNoteText(scenario.title);
+    const strategyHref = strategyHrefForScenario(scenario.id);
+
+    return {
+      scenarioId,
+      accent,
+      artLabel,
+      scenarioImage,
+      projectedCrs,
+      projectedGap,
+      outcomeTone,
+      gradientClass,
+      particleClass,
+      summary,
+      note,
+      strategyHref,
+    };
+  }, [scenario, profile, cutoff, topTier]);
+
+  return (
+    <motion.div
+      variants={animated ? fadeUp : undefined}
+      initial={animated ? undefined : { opacity: 0, y: 16 }}
+      animate={animated ? undefined : { opacity: 1, y: 0 }}
+      exit={animated ? undefined : { opacity: 0, y: -10 }}
+      whileHover={{ y: topTier ? -4 : -3, scale: topTier ? 1.005 : 1.003 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className={[
+        "group relative overflow-hidden border bg-white/[0.03] p-5 transition duration-300",
+        topTier ? "rounded-[30px]" : "rounded-[28px]",
+        "hover:border-white/20 hover:bg-white/[0.05]",
+        cardModel.accent.ring,
+        cardModel.accent.shadow,
+      ].join(" ")}
+    >
+      <div
+        className={[
+          "pointer-events-none absolute inset-0 opacity-80",
+          "bg-linear-to-br",
+          cardModel.accent.glow,
+        ].join(" ")}
+      />
+
+      <div className="relative z-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            {topTier ? (
+              cardModel.scenarioImage ? (
+                <motion.div
+                  className="relative mt-1 flex h-[88px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded-[28px]"
+                  whileHover={{ y: -2, scale: 1.03 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                >
+                  <motion.div
+                    className={[
+                      "absolute inset-0 rounded-[28px] bg-linear-to-br blur-xl",
+                      cardModel.gradientClass ?? "",
+                    ].join(" ")}
+                    animate={{ opacity: [0.32, 0.48, 0.32], scale: [1, 1.03, 1] }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <div
+                    className={[
+                      "absolute inset-0 rounded-[28px] bg-linear-to-br",
+                      cardModel.gradientClass ?? "",
+                    ].join(" ")}
+                  />
+                  <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-white/[0.04] backdrop-blur-sm transition group-hover:border-white/20" />
+                  <motion.div
+                    className="absolute z-0 h-[56px] w-[56px] rounded-full bg-white/12 blur-2xl"
+                    animate={{ scale: [1, 1.12, 1], opacity: [0.18, 0.34, 0.18] }}
+                    transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div
+                    className="absolute z-0 h-[42px] w-[42px] rounded-full bg-white/10 blur-lg"
+                    animate={{ scale: [1, 1.08, 1], opacity: [0.22, 0.42, 0.22] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.25 }}
+                  />
+                  <motion.div
+                    className="absolute z-0 h-[24px] w-[24px] rounded-full bg-white/16 blur-md"
+                    animate={{ scale: [1, 1.18, 1], opacity: [0.22, 0.5, 0.22] }}
+                    transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
+                  />
+                  <div className="absolute inset-0 overflow-hidden rounded-[28px]">
+                    {[0, 1, 2, 3].map((i) => (
+                      <motion.span
+                        key={i}
+                        className={["absolute rounded-full", cardModel.particleClass ?? ""].join(" ")}
+                        style={{
+                          width: i % 2 === 0 ? 3 : 2,
+                          height: i % 2 === 0 ? 3 : 2,
+                          left: `${20 + i * 14}%`,
+                          top: `${20 + (i % 3) * 18}%`,
+                          boxShadow: "0 0 10px rgba(255,255,255,0.24)",
+                        }}
+                        animate={{ y: [0, -4, 0], opacity: [0.08, 0.24, 0.08], scale: [1, 1.08, 1] }}
+                        transition={{
+                          duration: 2.8 + i * 0.35,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.2,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <motion.img
+                    src={cardModel.scenarioImage}
+                    alt=""
+                    className="relative z-20 h-[72px] w-[72px] object-contain drop-shadow-[0_0_28px_rgba(255,255,255,0.32)]"
+                    animate={{ y: [0, -2, 0], scale: [1, 1.025, 1] }}
+                    transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </motion.div>
+              ) : (
+                <div className="relative mt-1 h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/30 p-2 backdrop-blur">
+                  <div className={["absolute inset-2 rounded-xl opacity-90", cardModel.accent.artA].join(" ")} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-black/20 backdrop-blur">
+                      <div className={["absolute h-6 w-6 rounded-lg opacity-90", cardModel.accent.artB].join(" ")} />
+                      <span className="relative text-[11px] font-bold tracking-[0.18em] text-black/80">
+                        {cardModel.artLabel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : null}
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className={[topTier ? "text-2xl" : "text-xl", "font-semibold tracking-tight text-white"].join(" ")}>
+                  {scenario.title}
+                </h3>
+                <span className={["rounded-full border px-2.5 py-1 text-xs font-semibold", cardModel.accent.chip].join(" ")}>
+                  {deltaLabel(scenario.delta)}
+                </span>
+              </div>
+
+              <p className={["max-w-2xl text-sm leading-6", topTier ? "mt-3 text-white/65" : "mt-3 text-white/62"].join(" ")}>
+                {cardModel.summary}
+              </p>
+            </div>
+          </div>
+
+          <div className={topTier ? "shrink-0" : undefined}>
+            <div className={["border border-white/10 bg-black/25 text-right backdrop-blur", topTier ? "rounded-[22px] px-5 py-4" : "rounded-[20px] px-4 py-3"].join(" ")}>
+              <div className={[topTier ? "text-[11px] tracking-[0.2em]" : "text-[10px] tracking-[0.18em]", "font-semibold uppercase text-white/45"].join(" ")}>
+                Estimated gain
+              </div>
+              <div className={["mt-2 font-bold text-white", topTier ? "text-3xl" : "text-2xl"].join(" ")}>
+                +{scenario.delta}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {topTier ? (
+          <div className="mt-5 grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                Projected result
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <div className="text-4xl font-bold tracking-tight text-white">{cardModel.projectedCrs}</div>
+                <div className="pb-1 text-sm text-white/55">new CRS</div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className={["rounded-full border px-3 py-1 text-xs font-semibold", cardModel.outcomeTone.pill].join(" ")}>
+                  {cardModel.outcomeTone.label}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/75">
+                  {gapLabel(cardModel.projectedGap, false)} vs cutoff {cutoff}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                Scenario note
+              </div>
+              <div className="mt-3 text-sm leading-6 text-white/65">{cardModel.note}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Projected result
+                </div>
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <div className="text-3xl font-bold tracking-tight text-white">{cardModel.projectedCrs}</div>
+                  <div className="pb-1 text-sm text-white/55">new CRS</div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={["rounded-full border px-3 py-1 text-xs font-semibold", cardModel.outcomeTone.pill].join(" ")}>
+                  {cardModel.outcomeTone.label}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/75">
+                  {gapLabel(cardModel.projectedGap, false)} vs cutoff {cutoff}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
+              What happens if...
+            </span>
+            <span className={["rounded-full border px-3 py-1 text-xs font-semibold", cardModel.outcomeTone.pill].join(" ")}>
+              {cardModel.outcomeTone.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {userPlan === "pro" ? (
+              <Link
+                href={cardModel.strategyHref}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition duration-300 hover:border-white/20 hover:bg-white/10"
+              >
+                View premium strategy
+              </Link>
+            ) : (
+              <Link
+                href={cardModel.strategyHref}
+                className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition duration-300 hover:border-cyan-400/30 hover:bg-cyan-400/15"
+              >
+                Unlock strategy
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const ScenarioOpportunityCard = memo(ScenarioOpportunityCardInner);
+
+function OpportunitySkeletonCard({ topTier = false }: { topTier?: boolean }) {
+  return (
+    <div
+      className={[
+        "relative overflow-hidden border border-white/10 bg-white/[0.03] p-5",
+        topTier ? "rounded-[30px]" : "rounded-[28px]",
+      ].join(" ")}
+    >
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/[0.05] to-transparent animate-[pulse_2.6s_ease-in-out_infinite]" />
+      <div className="relative z-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className={["shrink-0 rounded-[28px] bg-white/8", topTier ? "h-[88px] w-[88px]" : "h-14 w-14"].join(" ")} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className={["rounded-full bg-white/10", topTier ? "h-7 w-56" : "h-6 w-44"].join(" ")} />
+                <div className="h-6 w-16 rounded-full bg-white/10" />
+              </div>
+              <div className="mt-3 h-4 w-full max-w-xl rounded-full bg-white/8" />
+              <div className="mt-2 h-4 w-4/5 max-w-lg rounded-full bg-white/8" />
+            </div>
+          </div>
+
+          <div className={["rounded-[22px] border border-white/10 bg-black/25", topTier ? "h-[84px] w-[112px]" : "h-[72px] w-[100px]"].join(" ")} />
+        </div>
+
+        <div className={["mt-5 grid gap-3", topTier ? "lg:grid-cols-[1.15fr_0.85fr]" : ""].join(" ")}>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="h-3 w-24 rounded-full bg-white/10" />
+            <div className="mt-4 h-10 w-28 rounded-full bg-white/10" />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <div className="h-7 w-28 rounded-full bg-white/10" />
+              <div className="h-7 w-36 rounded-full bg-white/10" />
+            </div>
+          </div>
+          {topTier ? (
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="h-3 w-28 rounded-full bg-white/10" />
+              <div className="mt-4 h-4 w-full rounded-full bg-white/8" />
+              <div className="mt-2 h-4 w-5/6 rounded-full bg-white/8" />
+              <div className="mt-2 h-4 w-3/4 rounded-full bg-white/8" />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+          <div className="flex gap-2">
+            <div className="h-7 w-32 rounded-full bg-white/10" />
+            <div className="h-7 w-24 rounded-full bg-white/10" />
+          </div>
+          <div className="h-10 w-40 rounded-full bg-white/10" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------- Component ----------
 export default function SimulatorMVP() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [lang, setLang] = useState<Lang>("en");
 
+  const [showMarketDetails, setShowMarketDetails] = useState<boolean>(false);
   const [compareMode, setCompareMode] = useState<boolean>(true);
   const [compare, setCompare] = useState<{ general?: CompareSeries; category?: CompareSeries }>({});
   const [compareLoading, setCompareLoading] = useState<boolean>(false);
   const [compareError, setCompareError] = useState<string>("");
 
-  // Inputs
-  const [baseCrs, setBaseCrs] = useState<number>(472);
-  const [ieltsClb, setIeltsClb] = useState<number>(8);
-  const [frenchClb, setFrenchClb] = useState<number>(0);
-  const [canExpYears, setCanExpYears] = useState<number>(0);
-  const [hasJobOffer, setHasJobOffer] = useState<boolean>(false);
-  const [hasPnp, setHasPnp] = useState<boolean>(false);
+  const [storedProfile, setStoredProfile] = useState<StoredBaseProfilePayload | null>(null);
+  const [baseProfileReady, setBaseProfileReady] = useState(false);
+  const [showAllScenarios, setShowAllScenarios] = useState(false);
+  const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>([]);
 
   // Target program for benchmark
   const [programTarget, setProgramTarget] = useState<ProgramKey>("general");
@@ -307,21 +929,42 @@ export default function SimulatorMVP() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [top, setTop] = useState<ScenarioResult[]>([]);
+  const [allScenarios, setAllScenarios] = useState<ScenarioResult[]>([]);
   const [roadmapSaving, setRoadmapSaving] = useState(false);
   const [roadmapMessage, setRoadmapMessage] = useState("");
   const [roadmapError, setRoadmapError] = useState("");
-  const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapLoadMessage, setRoadmapLoadMessage] = useState("");
   const [roadmapLoadError, setRoadmapLoadError] = useState("");
   const [loadedRoadmapEmail, setLoadedRoadmapEmail] = useState("");
   const [loadedRoadmapCreatedAt, setLoadedRoadmapCreatedAt] = useState("");
   const [roadmapHistory, setRoadmapHistory] = useState<RoadmapHistoryItem[]>([]);
+  const [roadmapReplaceMode, setRoadmapReplaceMode] = useState(false);
+  const [roadmapReplacingId, setRoadmapReplacingId] = useState("");
+  const [lastSavedRoadmapSignature, setLastSavedRoadmapSignature] = useState("");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authUserLoading, setAuthUserLoading] = useState(true);
   const [authUserError, setAuthUserError] = useState("");
   const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
   const [userPlanLoading, setUserPlanLoading] = useState(true);
+  const [aiStrategyState, setAiStrategyState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [aiStrategyError, setAiStrategyError] = useState("");
+  const [aiStrategyResult, setAiStrategyResult] = useState<AIStrategyRecommendation | null>(null);
+  const [aiStrategyAccessDenied, setAiStrategyAccessDenied] = useState(false);
+  const [aiUsage, setAiUsage] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+    period_start: string;
+  } | null>(null);
   const authenticatedEmail = authUser?.email?.trim().toLowerCase() ?? "";
+  const baseProfileOwnerKey = useMemo(() => getBaseProfileOwnerKey(authUser), [authUser]);
+  const restoreRoadmapId = searchParams.get("roadmapId")?.trim() ?? "";
+  const shouldRestoreFromQuery = searchParams.get("restore") === "1";
+  const upgradeUnlocked = searchParams.get("pro") === "unlocked";
+  const upgradeUnlockTarget = searchParams.get("unlock") ?? "pro";
+  const simulatorEntry = searchParams.get("entry") ?? "";
+  const restoredRoadmapIdRef = useRef<string | null>(null);
+  const previousBaseProfileOwnerKeyRef = useRef<string | null | undefined>(undefined);
 
   // Benchmark data
   const [bench, setBench] = useState<BenchmarkData | null>(null);
@@ -329,33 +972,141 @@ export default function SimulatorMVP() {
   const [cutoffLoading, setCutoffLoading] = useState<boolean>(true);
   const [cutoffError, setCutoffError] = useState<string>("");
 
-  // Draws history (sparkline)
-  const [history, setHistory] = useState<DrawPoint[]>([]);
-  const [historyUpdatedAt, setHistoryUpdatedAt] = useState<string>("");
-
   // Debounce + abort
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const hasTopResultsRef = useRef(false);
+
+  useEffect(() => {
+    trackFunnelEventOnce("simulator-viewed", "simulator_viewed", {
+      entry: simulatorEntry || "direct",
+    });
+  }, [simulatorEntry]);
+
+  useEffect(() => {
+    if (!upgradeUnlocked) {
+      return;
+    }
+
+    trackFunnelEventOnce(`checkout-completed-simulator-${upgradeUnlockTarget}`, "checkout_completed", {
+      unlock: upgradeUnlockTarget,
+      location: "simulator",
+    });
+    trackFunnelEventOnce(`pro-unlocked-simulator-${upgradeUnlockTarget}`, "pro_unlocked", {
+      unlock: upgradeUnlockTarget,
+      location: "simulator",
+    });
+  }, [upgradeUnlockTarget, upgradeUnlocked]);
+
+  useEffect(() => {
+    if (authUserLoading) {
+      return;
+    }
+
+    const previousOwnerKey = previousBaseProfileOwnerKeyRef.current;
+    const ownerChanged = previousOwnerKey !== undefined && previousOwnerKey !== baseProfileOwnerKey;
+    const rawStoredProfile = readAnyStoredBaseProfile();
+    const scopedStoredProfile = readStoredBaseProfile(baseProfileOwnerKey);
+
+    if (
+      rawStoredProfile &&
+      ((!baseProfileOwnerKey && rawStoredProfile.ownerKey) ||
+        (!!baseProfileOwnerKey && rawStoredProfile.ownerKey !== baseProfileOwnerKey))
+    ) {
+      clearStoredBaseProfile();
+    }
+
+    if (ownerChanged) {
+      setSelectedOpportunityIds([]);
+      setAiStrategyState("idle");
+      setAiStrategyError("");
+      setAiStrategyResult(null);
+      setAiStrategyAccessDenied(false);
+      setAiUsage(null);
+      setRoadmapLoadMessage("");
+      setRoadmapLoadError("");
+      setLoadedRoadmapEmail("");
+      setLoadedRoadmapCreatedAt("");
+      setLastSavedRoadmapSignature("");
+      restoredRoadmapIdRef.current = null;
+    }
+
+    setStoredProfile(scopedStoredProfile);
+    setBaseProfileReady(true);
+    previousBaseProfileOwnerKeyRef.current = baseProfileOwnerKey;
+  }, [authUserLoading, baseProfileOwnerKey]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("crs_ui_lang");
+      if (saved === "en" || saved === "es") {
+        setLang(saved);
+      }
+    } catch {
+      // ignore local storage failures
+    }
+
+    const syncLanguage = (event: Event) => {
+      const nextLang =
+        event instanceof CustomEvent && (event.detail === "en" || event.detail === "es")
+          ? event.detail
+          : null;
+
+      if (nextLang) {
+        setLang(nextLang);
+      }
+    };
+
+    window.addEventListener("crs-ui-lang-change", syncLanguage);
+
+    return () => {
+      window.removeEventListener("crs-ui-lang-change", syncLanguage);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("crs_ui_lang", lang);
+    } catch {
+      // ignore local storage failures
+    }
+  }, [lang]);
+
+  const baseProfile = useMemo(
+    () => (storedProfile ? mapStoredDataToProfile(storedProfile) : null),
+    [storedProfile]
+  );
+  const preferredName = useMemo(
+    () => greetingLabel(storedProfile?.baseProfile.preferred_name),
+    [storedProfile]
+  );
+  const roadmapName = useMemo(() => roadmapDisplayName(preferredName), [preferredName]);
+  const saveRoadmapLabel = useMemo(
+    () => (preferredName ? `Save ${roadmapName}` : "Save your roadmap"),
+    [preferredName, roadmapName]
+  );
 
   const profile: Profile = useMemo(
-    () => ({
-      baseCrs: clampInt(baseCrs, 1, 2000),
-      ieltsClb: clampInt(ieltsClb, 0, 10),
-      frenchClb: clampInt(frenchClb, 0, 10),
-      canExpYears: clampInt(canExpYears, 0, 5),
-      hasJobOffer: !!hasJobOffer,
-      hasPnp: !!hasPnp,
-    }),
-    [baseCrs, ieltsClb, frenchClb, canExpYears, hasJobOffer, hasPnp]
+    () =>
+      baseProfile ?? {
+        baseCrs: 0,
+        ieltsClb: 0,
+        frenchClb: 0,
+        canExpYears: 0,
+        hasJobOffer: false,
+        hasPnp: false,
+      },
+    [baseProfile]
   );
 
-  // Effective CRS: if user already has a provincial nomination, add +600 to the baseline.
-  const effectiveBaseCrs = useMemo(
-    () => profile.baseCrs + (profile.hasPnp ? 600 : 0),
-    [profile.baseCrs, profile.hasPnp]
-  );
+  const effectiveEnglishClb = useMemo(() => profile.ieltsClb, [profile.ieltsClb]);
 
-  const canRun = useMemo(() => Number.isFinite(profile.baseCrs) && profile.baseCrs > 0, [profile.baseCrs]);
+  const effectiveBaseCrs = useMemo(() => profile.baseCrs, [profile.baseCrs]);
+
+  const canRun = useMemo(
+    () => Number.isFinite(profile.baseCrs) && profile.baseCrs > 0 && !!baseProfile,
+    [baseProfile, profile.baseCrs]
+  );
 
   const programOptions = useMemo(
     () =>
@@ -373,6 +1124,82 @@ export default function SimulatorMVP() {
     const i = programOptions.findIndex((o) => o.key === programTarget);
     return i >= 0 ? i : 0;
   }, [programOptions, programTarget]);
+
+  const availableOpportunities = useMemo(() => {
+    if (!baseProfile) return [];
+
+    return simulationOpportunities.filter(
+      (opportunity) => !scenarioAlreadyAchieved(baseProfile, opportunity.scenarioId)
+    );
+  }, [baseProfile]);
+
+  const selectedOpportunityLookup = useMemo(
+    () =>
+      selectedOpportunityIds.reduce<Record<string, boolean>>((acc, scenarioId) => {
+        acc[scenarioId] = true;
+        return acc;
+      }, {}),
+    [selectedOpportunityIds]
+  );
+
+  const activeToggleCount = useMemo(
+    () => selectedOpportunityIds.length,
+    [selectedOpportunityIds]
+  );
+
+  const profileSummaryItems = useMemo(() => {
+    if (!storedProfile) return [];
+
+    const base = storedProfile.baseProfile;
+
+    return [
+      {
+        label: "Current CRS",
+        value: `${base.currentCrs}`,
+        alwaysShow: true,
+      },
+      {
+        label: "English",
+        value: base.englishClb ? `CLB ${base.englishClb}` : undefined,
+      },
+      {
+        label: "French",
+        value: base.frenchClb ? `CLB ${base.frenchClb}` : undefined,
+      },
+      {
+        label: "Canadian experience",
+        value: `${base.canadianExperienceYears ?? 0} year${base.canadianExperienceYears === 1 ? "" : "s"}`,
+        alwaysShow: true,
+      },
+      {
+        label: "Education",
+        value: base.educationLabel,
+      },
+      {
+        label: "Marital status",
+        value: base.maritalStatusLabel,
+      },
+      {
+        label: "Job offer",
+        value: labelForBoolean(!!base.hasJobOffer),
+        alwaysShow: true,
+      },
+      {
+        label: "PNP",
+        value: labelForBoolean(!!base.hasPnp),
+        alwaysShow: true,
+      },
+      {
+        label: "Foreign experience",
+        value: base.foreignExperienceLabel,
+      },
+    ]
+      .filter((item) => item.alwaysShow || !!item.value)
+      .map((item) => ({
+        label: item.label,
+        value: item.value ?? "",
+      }));
+  }, [storedProfile]);
 
   // (A) Fetch benchmark when program changes
   useEffect(() => {
@@ -409,50 +1236,6 @@ export default function SimulatorMVP() {
     }
 
     run();
-    return () => {
-      alive = false;
-      controller.abort();
-    };
-  }, [programTarget]);
-
-  // (A2) Fetch draws history (sparkline) when program changes
-  useEffect(() => {
-    let alive = true;
-    const controller = new AbortController();
-
-    async function loadHistory() {
-      try {
-        const res = await fetch(`/api/draws?program=${programTarget}`, {
-          method: "GET",
-          signal: controller.signal,
-          cache: "no-store",
-        });
-
-        if (!res.ok) return;
-        const json: unknown = await res.json();
-        if (!alive) return;
-
-        const parsed = parseDrawsPayload(json);
-
-        if (typeof parsed.updatedAt === "string") {
-          setHistoryUpdatedAt(parsed.updatedAt);
-        } else {
-          setHistoryUpdatedAt("");
-        }
-
-        // Keep 6 points for a clean sparkline; ensure chronological left->right (oldest -> latest)
-        const slice = parsed.points.slice(0, 6);
-        const chronological =
-          slice.length >= 2 && slice[0].date > slice[slice.length - 1].date ? slice.slice().reverse() : slice;
-
-        setHistory(chronological);
-      } catch {
-        // silent fallback
-      }
-    }
-
-    loadHistory();
-
     return () => {
       alive = false;
       controller.abort();
@@ -616,16 +1399,14 @@ export default function SimulatorMVP() {
   }, []);
 
   useEffect(() => {
-    const email = authenticatedEmail;
-
-    if (!email) {
+    if (!authenticatedEmail) {
       setRoadmapHistory([]);
       setLoadedRoadmapEmail("");
       setLoadedRoadmapCreatedAt("");
       return;
     }
 
-    void loadRoadmapHistory(email);
+    void loadRoadmapHistory();
   }, [authenticatedEmail]);
 
   useEffect(() => {
@@ -678,25 +1459,72 @@ export default function SimulatorMVP() {
   // (B) Market gaps + zones
   const marketGap = useMemo(() => cutoff - effectiveBaseCrs, [cutoff, effectiveBaseCrs]);
   const marketZone = useMemo(() => (profile.hasPnp ? ("nomination" as Zone) : zoneFromGap(marketGap)), [marketGap, profile.hasPnp]);
+  const visibleTop = useMemo(
+    () => top.filter((scenario) => scenario.eligible && !scenarioAlreadyAchieved(profile, scenario.id)),
+    [profile, top]
+  );
+  const primaryVisibleTop = useMemo(() => visibleTop.slice(0, 3), [visibleTop]);
+  const extraVisibleTop = useMemo(() => visibleTop.slice(3), [visibleTop]);
+  const hasInitialData = top.length > 0;
+  const isInitialLoading = loading && !hasInitialData;
+  const isRefreshing = loading && hasInitialData;
+  const showOpportunitySkeletons = isInitialLoading && !error;
 
-  const spark = useMemo(() => {
-    if (!history || history.length < 2) return null;
-    const { poly } = sparklinePoints(history);
-    const delta = trendFromHistory(history);
-    const tLabel = trendLabel(delta);
-    const firstDate = history[0]?.date ?? "";
-    const lastDate = history[history.length - 1]?.date ?? "";
-    const latest = history[history.length - 1]?.cutoff;
-    const oldest = history[0]?.cutoff;
-    return { poly, delta, tLabel, firstDate, lastDate, latest, oldest };
-  }, [history]);
+  useEffect(() => {
+    hasTopResultsRef.current = top.length > 0;
+  }, [top.length]);
+
+  useEffect(() => {
+    const availableIds = new Set(availableOpportunities.map((opportunity) => opportunity.scenarioId));
+    setSelectedOpportunityIds((prev) => prev.filter((id) => availableIds.has(id)));
+  }, [availableOpportunities]);
+
+  const selectedScenarioResults = useMemo(() => {
+    if (!baseProfileReady) {
+      return selectedOpportunityIds.map((id) => ({
+        id,
+        scenario: null as ScenarioResult | null,
+        isReady: false,
+      }));
+    }
+
+    return selectedOpportunityIds.map((id) => {
+      const scenario = allScenarios.find((item) => item.id === id);
+
+      if (!scenario) {
+        return {
+          id,
+          scenario: null as ScenarioResult | null,
+          isReady: false,
+        };
+      }
+
+      return {
+        id,
+        scenario,
+        isReady: true,
+      };
+    });
+  }, [allScenarios, baseProfileReady, selectedOpportunityIds]);
+
+  const visibleOpportunityCards = useMemo(
+    () =>
+      selectedScenarioResults.map((item) => ({
+        id: item.id,
+        scenario: item.scenario,
+        isReady: item.isReady,
+      })),
+    [selectedScenarioResults]
+  );
 
   // (C) Simulate scenarios (debounced)
   useEffect(() => {
     if (!canRun) {
       setTop([]);
+      setAllScenarios([]);
       setError("");
       setLoading(false);
+      hasTopResultsRef.current = false;
       return;
     }
 
@@ -709,8 +1537,12 @@ export default function SimulatorMVP() {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    setLoading(true);
+    setError("");
 
-    debounceRef.current = window.setTimeout(async () => {
+    const runSimulation = async () => {
+      if (controller.signal.aborted) return;
+
       setLoading(true);
       setError("");
 
@@ -723,15 +1555,29 @@ export default function SimulatorMVP() {
         });
 
         setTop(result.top);
+        setAllScenarios(
+          result.all.map((scenario) => ({
+            ...scenario,
+            newCrs: projectedScenarioCrs(scenario, profile, scenario.id === "pnp_nomination" ? "pnp" : scenario.id),
+          }))
+        );
+        hasTopResultsRef.current = result.top.length > 0;
       } catch (e: unknown) {
         if (controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : "Unexpected error");
-        setTop([]);
       } finally {
         if (controller.signal.aborted) return;
         setLoading(false);
       }
-    }, 250);
+    };
+
+    if (hasTopResultsRef.current) {
+      debounceRef.current = window.setTimeout(() => {
+        void runSimulation();
+      }, 250);
+    } else {
+      void runSimulation();
+    }
 
     return () => {
       if (debounceRef.current) {
@@ -754,150 +1600,155 @@ export default function SimulatorMVP() {
     return { trendLabel, source };
   }, [bench]);
 
-  const strategicInsight = useMemo(() => {
-    if (!bench) return null;
+  const recommendationSummary = useMemo(
+    () =>
+      buildRecommendationSummary(visibleTop, {
+        englishClb: profile.ieltsClb,
+        frenchClb: profile.frenchClb,
+        canadianExperienceYears: profile.canExpYears,
+        hasJobOffer: profile.hasJobOffer,
+        hasPnp: profile.hasPnp,
+        educationLabel: storedProfile?.baseProfile.educationLabel,
+        foreignExperienceLabel: storedProfile?.baseProfile.foreignExperienceLabel,
+        canadianCredentialLabel: storedProfile?.baseProfile.canadianCredentialLabel,
+        profileModeLabel: storedProfile?.baseProfile.profileModeLabel,
+        rawForm: isRecord(storedProfile?.baseProfile.rawForm)
+          ? storedProfile.baseProfile.rawForm
+          : null,
+        programTarget,
+      }),
+    [
+      profile.canExpYears,
+      profile.frenchClb,
+      profile.hasJobOffer,
+      profile.hasPnp,
+      profile.ieltsClb,
+      programTarget,
+      storedProfile?.baseProfile.canadianCredentialLabel,
+      storedProfile?.baseProfile.educationLabel,
+      storedProfile?.baseProfile.foreignExperienceLabel,
+      storedProfile?.baseProfile.profileModeLabel,
+      storedProfile?.baseProfile.rawForm,
+      visibleTop,
+    ]
+  );
 
-    const currentScore = effectiveBaseCrs;
-    const latestCutoff = cutoff;
-    const gap = latestCutoff - currentScore;
+  const aiPreview = useMemo(() => {
+    const bestMove =
+      recommendationSummary.bestRealisticPath ?? recommendationSummary.highestUpsidePath ?? null;
 
-    if (profile.hasPnp) {
-      return {
-        zone: "nomination" as Zone,
-        chip: `${zoneHeadlinePrefix("nomination")} • ${programLabel(programTarget)}`,
-        headline: `You are at nomination level (+600).`,
-        detail: `You are ${Math.abs(gap)} points above the latest cutoff.`,
-      };
+    if (!bestMove) {
+      return null;
     }
 
-    // Find first eligible scenario that crosses cutoff
-    const crossingScenario = top.find(
-      (s) => s.eligible && (typeof s.newCrs === "number" ? s.newCrs : profile.baseCrs + s.delta) + (profile.hasPnp ? 600 : 0) >= latestCutoff
-    );
+    const projectedCrs = profile.baseCrs + (bestMove.delta ?? 0);
+    const gapAfterMove = cutoff - projectedCrs;
+    const shortReason =
+      bestMove === recommendationSummary.highestUpsidePath &&
+      bestMove !== recommendationSummary.bestRealisticPath
+        ? "This path shows the biggest upside available from your current profile, but it may depend on more external conditions."
+        : "This is one of the fastest realistic ways to increase your score from your current profile.";
 
-    if (gap <= 0) {
-      return {
-        zone: "strong" as Zone,
-        chip: `${zoneHeadlinePrefix("strong")} • ${programLabel(programTarget)}`,
-        headline: `You are ABOVE the latest cutoff by ${Math.abs(gap)} points.`,
-        detail: `You are currently competitive under ${programLabel(programTarget)} draws.`,
-      };
-    }
+    const whyThisMatters =
+      cutoff - profile.baseCrs > 30
+        ? "At your current CRS, small improvements may not be enough on their own. A stronger, more realistic move matters more now."
+        : "At your current CRS, focused improvements can still change how competitive your roadmap looks.";
 
-    if (crossingScenario) {
-      const projected =
-        (typeof crossingScenario.newCrs === "number"
-          ? crossingScenario.newCrs
-          : profile.baseCrs + crossingScenario.delta) +
-        (profile.hasPnp ? 600 : 0);
-      const projectedGap = latestCutoff - projected;
-      const isPnpScenario = crossingScenario.id === "pnp" || crossingScenario.title.toLowerCase().includes("pnp");
-      const projectedZone = isPnpScenario ? ("nomination" as Zone) : zoneFromGap(projectedGap);
-
-      return {
-        zone: zoneFromGap(gap) as Zone,
-        chip: `${zoneHeadlinePrefix(zoneFromGap(gap))} • Best next move → ${zoneLabel(projectedZone)}`,
-        headline: `You are ${gap} points below the cutoff.`,
-        detail: `${crossingScenario.title} could move you to ${projected} (Δ +${crossingScenario.delta}) — ${gapLabel(
-          projectedGap
-        )} vs cutoff.`,
-      };
-    }
+    const realityCheck =
+      gapAfterMove > 0
+        ? "Even after this move, your profile may still remain below the current cutoff, so you may need a second lever or a parallel path."
+        : "This move can improve your position meaningfully, but draw timing and the rest of your roadmap still matter.";
 
     return {
-      zone: zoneFromGap(gap) as Zone,
-      chip: `${zoneHeadlinePrefix(zoneFromGap(gap))} • ${programLabel(programTarget)}`,
-      headline: `You are ${gap} points below the cutoff.`,
-      detail:
-        "Your current options don’t cross the cutoff yet. Prioritize CLB 9+, French B2, Canadian experience, and explore PNP streams.",
+      introLine: preferredName
+        ? `${preferredName}, based on your current profile, your strongest realistic next move is taking shape here.`
+        : "Based on your current profile, your strongest realistic next move is taking shape here.",
+      bestMove:
+        typeof bestMove.delta === "number"
+          ? `${bestMove.title} (+${bestMove.delta} CRS)`
+          : bestMove.title,
+      shortReason,
+      whyThisMatters,
+      realityCheck,
     };
-  }, [bench, cutoff, effectiveBaseCrs, top, programTarget, profile.baseCrs, profile.hasPnp]);
+  }, [cutoff, preferredName, profile.baseCrs, recommendationSummary.bestRealisticPath, recommendationSummary.highestUpsidePath]);
 
-  const projectionSummary = useMemo(() => {
-    if (!top.length) return null;
-
-    const eligibleScenarios = top.filter((s) => s.eligible);
-
-    if (!eligibleScenarios.length) {
-      return {
-        currentCrs: effectiveBaseCrs,
-        realisticMove: null,
-        highestMove: {
-          title: "No eligible moves yet",
-          delta: 0,
-          projectedCrs: effectiveBaseCrs,
-        },
-        recommendation:
-          "Complete your profile inputs first. Then we can estimate your strongest CRS improvement path.",
-      };
+  useEffect(() => {
+    if (!aiPreview) {
+      return;
     }
 
-    const getProjectedCrs = (scenario: ScenarioResult) => {
-      const isPnpScenario = scenario.id === "pnp" || scenario.title.toLowerCase().includes("pnp");
-      const rawNewCrs =
-        typeof scenario.newCrs === "number" ? scenario.newCrs : profile.baseCrs + scenario.delta;
+    trackFunnelEventOnce("strategy-preview-viewed", "strategy_preview_viewed", {
+      bestMove: aiPreview.bestMove,
+    });
+  }, [aiPreview]);
 
-      return profile.hasPnp && !isPnpScenario ? rawNewCrs + 600 : rawNewCrs;
-    };
-
-    const highestScenario = eligibleScenarios.reduce((best, current) =>
-      current.delta > best.delta ? current : best
-    );
-
-    const realisticScenarios = eligibleScenarios.filter(
-      (s) => !(s.id === "pnp" || s.title.toLowerCase().includes("pnp"))
-    );
-
-    const realisticScenario = realisticScenarios.length
-      ? realisticScenarios.reduce((best, current) =>
-          current.delta > best.delta ? current : best
-        )
-      : null;
-
-    const recommendationSource = realisticScenario ?? highestScenario;
-    const recommendationTitle = recommendationSource.title.toLowerCase();
-
-    let recommendation = "";
-
-    if (recommendationTitle.includes("french")) {
-      recommendation =
-        "French appears to be your most realistic high-leverage move right now. It may unlock one of the fastest non-PNP CRS jumps.";
-    } else if (recommendationTitle.includes("ielts") || recommendationTitle.includes("english")) {
-      recommendation =
-        "Improving English looks like your best immediate ROI. This is often the fastest improvement to execute.";
-    } else if (recommendationTitle.includes("cec") || recommendationTitle.includes("experience")) {
-      recommendation =
-        "Canadian work experience is likely your strongest medium-term path. Time in Canada could materially improve your score.";
-    } else if (recommendationTitle.includes("job")) {
-      recommendation =
-        "A qualifying job offer could improve your profile meaningfully, depending on the role and eligibility.";
-    } else if (recommendationTitle.includes("pnp")) {
-      recommendation =
-        "A provincial nomination is the highest possible CRS jump, but you should also track a realistic non-PNP path you can execute sooner.";
-    } else {
-      recommendation =
-        "This appears to be your strongest available CRS improvement based on your current profile.";
-    }
-
-    return {
-      currentCrs: effectiveBaseCrs,
-      realisticMove: realisticScenario
-        ? {
-            title: realisticScenario.title,
-            delta: realisticScenario.delta,
-            projectedCrs: getProjectedCrs(realisticScenario),
-          }
-        : null,
-      highestMove: {
-        title: highestScenario.title,
-        delta: highestScenario.delta,
-        projectedCrs: getProjectedCrs(highestScenario),
+  const currentRoadmapPayload = useMemo(
+    () => ({
+      email: authenticatedEmail,
+      profile_snapshot: {
+        baseCrs: profile.baseCrs,
+        effectiveBaseCrs,
+        preferred_name: preferredName ?? undefined,
+        ieltsClb: profile.ieltsClb,
+        frenchClb: profile.frenchClb,
+        canExpYears: profile.canExpYears,
+        hasJobOffer: profile.hasJobOffer,
+        hasPnp: profile.hasPnp,
+        lang,
+        educationLabel: storedProfile?.baseProfile.educationLabel,
+        foreignExperienceLabel: storedProfile?.baseProfile.foreignExperienceLabel,
+        canadianCredentialLabel: storedProfile?.baseProfile.canadianCredentialLabel,
+        profileModeLabel: storedProfile?.baseProfile.profileModeLabel,
+        rawForm: storedProfile?.baseProfile.rawForm,
+        ai_strategy: aiStrategyResult,
+        ai_strategy_updated_at: aiStrategyResult ? new Date().toISOString() : undefined,
       },
-      recommendation,
-    };
-  }, [top, effectiveBaseCrs, profile.baseCrs, profile.hasPnp]);
+      program_target: programTarget,
+      top_scenarios: visibleTop,
+    }),
+    [
+      aiStrategyResult,
+      authenticatedEmail,
+      effectiveBaseCrs,
+      lang,
+      profile.baseCrs,
+      profile.canExpYears,
+      profile.frenchClb,
+      profile.hasJobOffer,
+      profile.hasPnp,
+      profile.ieltsClb,
+      preferredName,
+      programTarget,
+      storedProfile?.baseProfile.canadianCredentialLabel,
+      storedProfile?.baseProfile.educationLabel,
+      storedProfile?.baseProfile.foreignExperienceLabel,
+      storedProfile?.baseProfile.profileModeLabel,
+      storedProfile?.baseProfile.rawForm,
+      visibleTop,
+    ]
+  );
 
-  async function handleSaveRoadmap() {
+  const currentRoadmapSignature = useMemo(
+    () =>
+      JSON.stringify({
+        profile_snapshot: {
+          ...currentRoadmapPayload.profile_snapshot,
+          ai_strategy_updated_at: undefined,
+        },
+        program_target: currentRoadmapPayload.program_target,
+        top_scenarios: currentRoadmapPayload.top_scenarios,
+      }),
+    [currentRoadmapPayload]
+  );
+
+  const hasUnsavedRoadmapChanges = useMemo(() => {
+    if (!canRun || visibleTop.length === 0) return false;
+    if (!lastSavedRoadmapSignature) return true;
+    return currentRoadmapSignature !== lastSavedRoadmapSignature;
+  }, [canRun, currentRoadmapSignature, lastSavedRoadmapSignature, visibleTop.length]);
+
+  async function handleSaveRoadmap(replaceRoadmapId?: string) {
     setRoadmapMessage("");
     setRoadmapError("");
 
@@ -908,28 +1759,19 @@ export default function SimulatorMVP() {
       return;
     }
 
-    if (!top.length) {
+    if (!visibleTop.length) {
       setRoadmapError("No roadmap data available yet.");
       return;
     }
 
     setRoadmapSaving(true);
+    setRoadmapReplacingId(replaceRoadmapId ?? "");
 
     try {
       const payload = {
+        ...currentRoadmapPayload,
         email,
-        profile_snapshot: {
-          baseCrs: profile.baseCrs,
-          effectiveBaseCrs,
-          ieltsClb: profile.ieltsClb,
-          frenchClb: profile.frenchClb,
-          canExpYears: profile.canExpYears,
-          hasJobOffer: profile.hasJobOffer,
-          hasPnp: profile.hasPnp,
-          lang,
-        },
-        program_target: programTarget,
-        top_scenarios: top,
+        replace_roadmap_id: replaceRoadmapId,
       };
 
       const res = await fetch("/api/roadmaps", {
@@ -939,17 +1781,36 @@ export default function SimulatorMVP() {
         },
         body: JSON.stringify(payload),
       });
-
-      const data = (await res.json()) as
-        | { ok?: boolean; error?: string }
+      if (res.status === 403) {
+        setRoadmapError("Pro plan required to save roadmaps.");
+        router.push(buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" }));
+        return;
+      }
+      const json = await res.json().catch(() => null);
+      const data = json as
+        | { ok?: boolean; error?: string; code?: string }
         | { ok: true; roadmap: { id: string; email: string; created_at: string } };
+
+      if (res.status === 409 && data && "code" in data && data.code === "roadmap_limit_reached") {
+        setRoadmapReplaceMode(true);
+        setRoadmapError(
+          "You’ve reached your roadmap limit (2). Delete one or replace an existing roadmap to save a new version."
+        );
+        return;
+      }
 
       if (!res.ok || !("ok" in data) || data.ok !== true) {
         throw new Error(("error" in data && data.error) || "Failed to save roadmap.");
       }
 
-      setRoadmapMessage("Roadmap saved successfully.");
-      await loadRoadmapHistory(email);
+      setRoadmapReplaceMode(false);
+      setLastSavedRoadmapSignature(currentRoadmapSignature);
+      setRoadmapMessage(replaceRoadmapId ? "Roadmap replaced successfully." : "Roadmap saved successfully.");
+      trackFunnelEvent("roadmap_saved", {
+        action: replaceRoadmapId ? "replace" : "create",
+        topScenarios: visibleTop.length,
+      });
+      await loadRoadmapHistory();
       // setRoadmapEmail(""); // removed for auth user
     } catch (err: unknown) {
       setRoadmapError(
@@ -957,95 +1818,81 @@ export default function SimulatorMVP() {
       );
     } finally {
       setRoadmapSaving(false);
-    }
-  }
-  async function handleLoadRoadmap() {
-    setRoadmapLoadMessage("");
-    setRoadmapLoadError("");
-
-    const email = authenticatedEmail;
-
-    if (!authUser || !email) {
-      setRoadmapLoadError("You must be logged in to load a roadmap.");
-      return;
-    }
-
-    setRoadmapLoading(true);
-
-    try {
-      const res = await fetch(`/api/roadmaps?email=${encodeURIComponent(email)}`);
-
-      const data = (await res.json()) as
-        | { ok?: boolean; error?: string }
-        | {
-            ok: true;
-            roadmap: {
-              id: string;
-              email: string;
-              profile_snapshot: {
-                baseCrs?: number;
-                effectiveBaseCrs?: number;
-                ieltsClb?: number;
-                frenchClb?: number;
-                canExpYears?: number;
-                hasJobOffer?: boolean;
-                hasPnp?: boolean;
-                lang?: Lang;
-              };
-              program_target: ProgramKey;
-              top_scenarios: ScenarioResult[];
-              created_at: string;
-            };
-          };
-
-      if (!res.ok || !("ok" in data) || data.ok !== true || !("roadmap" in data)) {
-        throw new Error(("error" in data && data.error) || "Failed to load roadmap.");
-      }
-
-      const roadmap = data.roadmap;
-      const snapshot = roadmap.profile_snapshot ?? {};
-
-      setBaseCrs(typeof snapshot.baseCrs === "number" ? snapshot.baseCrs : 472);
-      setIeltsClb(typeof snapshot.ieltsClb === "number" ? snapshot.ieltsClb : 8);
-      setFrenchClb(typeof snapshot.frenchClb === "number" ? snapshot.frenchClb : 0);
-      setCanExpYears(typeof snapshot.canExpYears === "number" ? snapshot.canExpYears : 0);
-      setHasJobOffer(!!snapshot.hasJobOffer);
-      setHasPnp(!!snapshot.hasPnp);
-      setLang(snapshot.lang === "es" ? "es" : "en");
-
-      if (
-        roadmap.program_target === "general" ||
-        roadmap.program_target === "category" ||
-        roadmap.program_target === "cec" ||
-        roadmap.program_target === "fsw" ||
-        roadmap.program_target === "pnp"
-      ) {
-        setProgramTarget(roadmap.program_target);
-      }
-      setLoadedRoadmapEmail(roadmap.email);
-      setLoadedRoadmapCreatedAt(roadmap.created_at);
-
-      // setLoadRoadmapEmail(""); // removed for auth user
-      setRoadmapLoadMessage("Roadmap loaded successfully.");
-      await loadRoadmapHistory(email);
-    } catch (err: unknown) {
-      setRoadmapLoadError(
-        err instanceof Error ? err.message : "Failed to load roadmap."
-      );
-    } finally {
-      setRoadmapLoading(false);
+      setRoadmapReplacingId("");
     }
   }
 
-  function applyRoadmapToSimulator(roadmap: RoadmapHistoryItem) {
+  const applyStoredProfile = useCallback((payload: StoredBaseProfilePayload) => {
+    setStoredProfile(payload);
+    persistStoredBaseProfile(payload);
+    setSelectedOpportunityIds([]);
+  }, []);
+
+  const roadmapSnapshotToStoredProfile = useCallback((
+    snapshot: RoadmapHistoryItem["profile_snapshot"]
+  ): StoredBaseProfilePayload => {
+    const currentCrs =
+      typeof snapshot.effectiveBaseCrs === "number"
+        ? snapshot.effectiveBaseCrs
+        : typeof snapshot.baseCrs === "number"
+        ? snapshot.baseCrs
+        : 0;
+
+    return {
+      createdAt: new Date().toISOString(),
+      ownerKey: baseProfileOwnerKey,
+      baseProfile: {
+        currentCrs,
+        preferred_name: snapshot.preferred_name,
+        englishClb: typeof snapshot.ieltsClb === "number" ? snapshot.ieltsClb : 0,
+        frenchClb: typeof snapshot.frenchClb === "number" ? snapshot.frenchClb : 0,
+        canadianExperienceYears:
+          typeof snapshot.canExpYears === "number" ? snapshot.canExpYears : 0,
+        hasJobOffer: !!snapshot.hasJobOffer,
+        hasPnp: !!snapshot.hasPnp,
+        educationLabel: snapshot.educationLabel,
+        foreignExperienceLabel: snapshot.foreignExperienceLabel,
+        canadianCredentialLabel: snapshot.canadianCredentialLabel,
+        profileModeLabel: snapshot.profileModeLabel,
+        rawForm: snapshot.rawForm,
+      },
+    };
+  }, [baseProfileOwnerKey]);
+
+  const restoreRoadmapState = useCallback((
+    roadmap: {
+      id: string;
+      email: string;
+      profile_snapshot: {
+        baseCrs?: number;
+        effectiveBaseCrs?: number;
+        preferred_name?: string;
+        ieltsClb?: number;
+        frenchClb?: number;
+        canExpYears?: number;
+        hasJobOffer?: boolean;
+        hasPnp?: boolean;
+        lang?: Lang;
+        educationLabel?: string;
+        foreignExperienceLabel?: string;
+        canadianCredentialLabel?: string;
+        profileModeLabel?: string;
+        rawForm?: Record<string, unknown>;
+        ai_strategy?: AIStrategyRecommendation | null;
+        ai_strategy_updated_at?: string;
+      };
+      program_target: ProgramKey;
+      top_scenarios?: ScenarioResult[];
+      created_at: string;
+    },
+    successMessage: string
+  ) => {
     const snapshot = roadmap.profile_snapshot ?? {};
-
-    setBaseCrs(typeof snapshot.baseCrs === "number" ? snapshot.baseCrs : 472);
-    setIeltsClb(typeof snapshot.ieltsClb === "number" ? snapshot.ieltsClb : 8);
-    setFrenchClb(typeof snapshot.frenchClb === "number" ? snapshot.frenchClb : 0);
-    setCanExpYears(typeof snapshot.canExpYears === "number" ? snapshot.canExpYears : 0);
-    setHasJobOffer(!!snapshot.hasJobOffer);
-    setHasPnp(!!snapshot.hasPnp);
+    applyStoredProfile(roadmapSnapshotToStoredProfile(snapshot));
+    setAiStrategyResult(snapshot.ai_strategy ?? null);
+    setAiStrategyState(snapshot.ai_strategy ? "success" : "idle");
+    setAiStrategyError("");
+    setAiStrategyAccessDenied(false);
     setLang(snapshot.lang === "es" ? "es" : "en");
 
     if (
@@ -1060,17 +1907,116 @@ export default function SimulatorMVP() {
 
     setLoadedRoadmapEmail(roadmap.email);
     setLoadedRoadmapCreatedAt(roadmap.created_at);
-    setRoadmapLoadMessage("Roadmap loaded from history.");
+    setLastSavedRoadmapSignature(
+      JSON.stringify({
+        profile_snapshot: {
+          ...snapshot,
+          ai_strategy_updated_at: undefined,
+        },
+        program_target: roadmap.program_target,
+        top_scenarios: roadmap.top_scenarios ?? [],
+      })
+    );
+    setRoadmapReplaceMode(false);
+    setRoadmapLoadMessage(successMessage);
     setRoadmapLoadError("");
+  }, [applyStoredProfile, roadmapSnapshotToStoredProfile]);
+
+  function applyRoadmapToSimulator(roadmap: RoadmapHistoryItem) {
+    restoreRoadmapState(roadmap, "Roadmap loaded from history.");
   }
 
-  async function loadRoadmapHistory(email: string) {
-    try {
-      const cleanedEmail = email.trim().toLowerCase();
-      if (!cleanedEmail) return;
+  useEffect(() => {
+    async function restoreRoadmapFromQuery() {
+      if (!shouldRestoreFromQuery || !restoreRoadmapId) {
+        return;
+      }
 
-      const res = await fetch(`/api/roadmaps/list?email=${encodeURIComponent(cleanedEmail)}`);
-      const data = (await res.json()) as
+      if (restoredRoadmapIdRef.current === restoreRoadmapId) {
+        return;
+      }
+
+      if (authUserLoading) {
+        return;
+      }
+
+      if (!authUser) {
+        return;
+      }
+
+      try {
+        setRoadmapLoadError("");
+        setRoadmapLoadMessage("");
+
+        const res = await fetch(`/api/roadmaps?id=${encodeURIComponent(restoreRoadmapId)}`);
+
+        if (res.status === 403) {
+          setRoadmapLoadError("Pro plan required to restore this roadmap.");
+          return;
+        }
+
+        const json = await res.json().catch(() => null);
+        const data = json as
+          | { ok?: boolean; error?: string }
+          | {
+              ok: true;
+              roadmap: {
+                id: string;
+                email: string;
+                profile_snapshot: {
+                  baseCrs?: number;
+                  effectiveBaseCrs?: number;
+                  preferred_name?: string;
+                  ieltsClb?: number;
+                  frenchClb?: number;
+                  canExpYears?: number;
+                  hasJobOffer?: boolean;
+                  hasPnp?: boolean;
+                  lang?: Lang;
+                  educationLabel?: string;
+                  foreignExperienceLabel?: string;
+                  canadianCredentialLabel?: string;
+                  profileModeLabel?: string;
+                  rawForm?: Record<string, unknown>;
+                  ai_strategy?: AIStrategyRecommendation | null;
+                  ai_strategy_updated_at?: string;
+                };
+                program_target: ProgramKey;
+                top_scenarios: ScenarioResult[];
+                created_at: string;
+              };
+            };
+
+        if (!res.ok || !data || !("ok" in data) || data.ok !== true || !("roadmap" in data)) {
+          const restoreError =
+            data && "error" in data && typeof data.error === "string"
+              ? data.error
+              : "Failed to restore roadmap.";
+          throw new Error(restoreError);
+        }
+
+        restoreRoadmapState(data.roadmap, "Roadmap restored from dashboard.");
+        restoredRoadmapIdRef.current = restoreRoadmapId;
+      } catch (err) {
+        setRoadmapLoadError(
+          err instanceof Error ? err.message : "We couldn’t restore that saved roadmap."
+        );
+      }
+    }
+
+    void restoreRoadmapFromQuery();
+  }, [authUser, authUserLoading, restoreRoadmapId, restoreRoadmapState, shouldRestoreFromQuery]);
+
+  async function loadRoadmapHistory() {
+    try {
+      const res = await fetch(`/api/roadmaps/list`);
+      if (res.status === 403) {
+        // User is not on Pro plan; do not attempt to parse roadmap data
+        setRoadmapHistory([]);
+        return;
+      }
+      const json = await res.json().catch(() => null);
+      const data = json as
         | { ok?: boolean; error?: string }
         | { ok: true; roadmaps: RoadmapHistoryItem[] };
 
@@ -1090,18 +2036,154 @@ export default function SimulatorMVP() {
         method: "DELETE",
       });
 
+      if (res.status === 403) {
+        setRoadmapLoadError("Pro plan required to manage saved roadmaps.");
+        router.push(buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" }));
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Failed to delete roadmap.");
       }
 
       setRoadmapHistory((prev) => prev.filter((r) => r.id !== id));
+      setRoadmapReplaceMode(false);
 
       if (loadedRoadmapEmail && roadmapHistory.length <= 1) {
         setLoadedRoadmapEmail("");
         setLoadedRoadmapCreatedAt("");
+        setLastSavedRoadmapSignature("");
       }
     } catch {
       // keep silent for MVP delete flow
+    }
+  }
+
+  async function handleGenerateAiStrategy() {
+    if (userPlan !== "pro") {
+      setAiStrategyAccessDenied(true);
+      setAiStrategyState("idle");
+      return;
+    }
+
+    if (aiUsage?.remaining === 0) {
+      setAiStrategyAccessDenied(false);
+      setAiStrategyError("You’ve reached your monthly AI limit.");
+      setAiStrategyState("error");
+      return;
+    }
+
+    setAiStrategyAccessDenied(false);
+    setAiStrategyError("");
+    setAiStrategyState("loading");
+
+    try {
+      const res = await fetch("/api/ai/strategy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          profile: {
+            baseCrs: profile.baseCrs,
+            ieltsClb: profile.ieltsClb,
+            frenchClb: profile.frenchClb,
+            canExpYears: profile.canExpYears,
+            hasJobOffer: profile.hasJobOffer,
+            hasPnp: profile.hasPnp,
+            educationLabel: storedProfile?.baseProfile.educationLabel,
+            foreignExperienceLabel: storedProfile?.baseProfile.foreignExperienceLabel,
+            canadianCredentialLabel: storedProfile?.baseProfile.canadianCredentialLabel,
+            profileModeLabel: storedProfile?.baseProfile.profileModeLabel,
+            rawForm: storedProfile?.baseProfile.rawForm,
+          },
+          lang,
+          program_target:
+            programTarget === "general" || programTarget === "cec" || programTarget === "pnp"
+              ? programTarget
+              : "general",
+          benchmark_general:
+            typeof compare.general?.cutoff === "number" && Number.isFinite(compare.general.cutoff)
+              ? compare.general.cutoff
+              : cutoff,
+          benchmark_category:
+            typeof compare.category?.cutoff === "number" && Number.isFinite(compare.category.cutoff)
+              ? compare.category.cutoff
+              : undefined,
+        }),
+      });
+
+      const json = (await res.json().catch(() => null)) as
+        | {
+            ok?: boolean;
+            error?: string;
+            code?: string;
+            usage?: {
+              used: number;
+              limit: number;
+              remaining: number;
+              period_start: string;
+            };
+          }
+        | {
+            ok: true;
+            recommendation: AIStrategyRecommendation;
+            usage?: {
+              used: number;
+              limit: number;
+              remaining: number;
+              period_start: string;
+            };
+          };
+
+      if (res.status === 403) {
+        const code = json && "code" in json ? json.code : undefined;
+
+        if (code === "ai_limit_reached") {
+          if (json && "usage" in json && json.usage) {
+            setAiUsage(json.usage);
+          }
+          setAiStrategyAccessDenied(false);
+          setAiStrategyError("You’ve reached your monthly AI limit.");
+          setAiStrategyState("error");
+          return;
+        }
+
+        setAiStrategyAccessDenied(true);
+        setAiStrategyState("idle");
+        return;
+      }
+
+      if (!res.ok || !json || !("ok" in json) || json.ok !== true || !("recommendation" in json)) {
+        const code = json && "code" in json ? json.code : undefined;
+
+        if (code === "invalid_context") {
+          throw new Error("Your simulator context is incomplete. Update your profile and try again.");
+        }
+
+        if (code === "openai_request_failed" || code === "missing_api_key") {
+          throw new Error("The AI service is unavailable right now. Please try again.");
+        }
+
+        if (code === "ai_parse_failed") {
+          throw new Error("We received an invalid AI response. Please try again.");
+        }
+
+        throw new Error((json && "error" in json && json.error) || "AI strategy request failed");
+      }
+
+      if (json.usage) {
+        setAiUsage(json.usage);
+      }
+      setAiStrategyResult(json.recommendation);
+      setAiStrategyState("success");
+    } catch (error) {
+      setAiStrategyError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t generate your AI strategy right now. Please try again."
+      );
+      setAiStrategyState("error");
     }
   }
 
@@ -1115,483 +2197,298 @@ export default function SimulatorMVP() {
         <div className="absolute -right-40 top-56 h-104 w-104 rounded-full bg-violet-500/10 blur-3xl" />
       </div>
 
-      {/* header bar */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-6 py-4 lg:px-12 2xl:px-16">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white font-bold text-black">C</div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">CRS Roadmap</div>
-              <div className="text-xs text-white/60">Simulator</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {(loading || cutoffLoading) && (
-              <div className="hidden sm:block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-                Updating…
-              </div>
-            )}
-
-            <div className="relative rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur">
-              {/* sliding pill */}
-              <div
-                className="absolute bottom-1 top-1 rounded-full bg-white/10 shadow-[0_10px_30px_-18px_rgba(99,102,241,0.65)] transition-transform duration-300 ease-out"
-                style={{
-                  width: `calc(${100 / programOptions.length}% - 2px)`,
-                  transform: `translateX(${activeIndex * 100}%)`,
-                }}
-              />
-
-              <div className="relative z-10 grid grid-cols-5 gap-1">
-                {programOptions.map((o) => {
-                  const isActive = o.key === programTarget;
-                  const disabled = !o.enabled;
-
-                  return (
-                    <button
-                      key={o.key}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => setProgramTarget(o.key)}
-                      className={[
-                        "rounded-full px-3 py-1 text-xs font-semibold transition",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
-                        disabled
-                          ? "cursor-not-allowed text-white/30"
-                          : isActive
-                          ? "text-white"
-                          : "text-white/70 hover:text-white",
-                      ].join(" ")}
-                      title={disabled ? `${o.label} (soon)` : o.label}
-                    >
-                      {o.label}
-                      {!o.enabled ? <span className="ml-1 text-[10px] text-white/35">• soon</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/75">
-                {bench ? `Live (${benchMeta.source})` : "Fallback"}
-              </span>
-
-              {formatUpdatedAt(historyUpdatedAt) ? (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/60">
-                  Updated: {formatUpdatedAt(historyUpdatedAt) || "—"}
-                </span>
-              ) : null}
-            </div>
-
-            <Link
-              href="/"
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
-            >
-              ← Back
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-screen-2xl px-6 py-8 lg:px-12 2xl:px-16">
-        {/* Market Compare (Apple/Linear style) */}
-        <section className="mb-6 rounded-4xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-white">Market Compare</div>
-              <div className="mt-1 text-xs text-white/60">
-                General vs Category — cutoff, trend, gap, and recent history.
-              </div>
+        {upgradeUnlocked ? (
+          <MotionReveal>
+            <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              {upgradeSuccessMessage(upgradeUnlockTarget)}
             </div>
+          </MotionReveal>
+        ) : null}
 
-            <div className="flex items-center gap-2">
-              {compareLoading ? (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/75">
-                  Loading…
+        <MotionReveal>
+          <GlassPanel className="mb-8 rounded-[40px]">
+            <SimulatorHero
+              loading={loading}
+              cutoffLoading={cutoffLoading}
+              benchAvailable={!!bench}
+              benchSourceLabel={bench ? `Live source: ${benchMeta.source}` : "Benchmark fallback active"}
+              programOptions={programOptions}
+              activeIndex={activeIndex}
+              programTarget={programTarget}
+              onProgramChange={setProgramTarget}
+            />
+          </GlassPanel>
+        </MotionReveal>
+
+        {baseProfileReady && !storedProfile ? (
+          <MotionReveal delay={0.08}>
+            <GlassPanel className="rounded-[32px]">
+              <div className="max-w-2xl p-6">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                Build your profile first
+              </div>
+              <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                Start with the calculator so we can personalize your simulator and roadmap.
+              </div>
+              <div className="mt-3 text-sm leading-6 text-white/60">
+                Your simulator uses the base CRS profile from step one to rank realistic opportunities, preview strategy moves, and save a roadmap that actually reflects your situation.
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/crs-calculator"
+                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                >
+                  Go to calculator
+                </Link>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
+                  Free preview active
                 </span>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setCompareMode((v) => !v)}
-                className={[
-                  "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                  compareMode
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
-                ].join(" ")}
-              >
-                Compare: {compareMode ? "On" : "Off"}
-              </button>
-            </div>
-          </div>
-
-          {compareMode ? (
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {([compare.general, compare.category] as Array<CompareSeries | undefined>).map((s) => {
-                if (!s) return null;
-
-                const hasHist = Array.isArray(s.history) && s.history.length >= 2;
-                const sparkData = hasHist ? sparklinePoints(s.history) : null;
-
-                const winner =
-                  compare.general && compare.category
-                    ? s.program ===
-                      (Math.abs(compare.general.gap) <= Math.abs(compare.category.gap)
-                        ? compare.general.program
-                        : compare.category.program)
-                    : false;
-
-                return (
-                  <button
-                    key={s.program}
-                    type="button"
-                    onClick={() => setProgramTarget(s.program)}
-                    className={[
-                      "w-full text-left rounded-3xl border bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition",
-                      "hover:border-white/20 hover:bg-black/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
-                      s.program === programTarget ? "border-indigo-500/30 ring-1 ring-indigo-500/25" : "border-white/10",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-sm font-semibold text-white">{programLabel(s.program)}</div>
-
-                          {winner ? (
-                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
-                              Better right now
-                            </span>
-                          ) : null}
-
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] font-semibold text-white/70">
-                            {s.source}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                            <div className="text-[10px] font-semibold text-white/60">Cutoff</div>
-                            <div className="mt-0.5 text-sm font-semibold text-white">{s.cutoff || "—"}</div>
-                          </div>
-
-                          <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                            <div className="text-[10px] font-semibold text-white/60">Trend</div>
-                            <div className="mt-0.5 text-sm font-semibold text-white">{s.trendLabel}</div>
-                          </div>
-
-                          <div className={["rounded-2xl border px-3 py-2", gapToneClassWithPnp(s.gap, profile.hasPnp)].join(" ")}>
-                            <div className="text-[10px] font-semibold opacity-80">Gap</div>
-                            <div className="mt-0.5 text-sm font-semibold">{gapLabel(s.gap, profile.hasPnp)}</div>
-                          </div>
-
-                          <div className={["rounded-2xl border px-3 py-2", zonePillClass(s.zone)].join(" ")}>
-                            <div className="text-[10px] font-semibold opacity-80">Zone</div>
-                            <div className="mt-0.5 text-xs font-semibold leading-tight line-clamp-2">
-                              {zoneLabel(s.zone)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0">
-                        {sparkData ? (
-                          <svg viewBox="0 0 100 40" className="h-10 w-28">
-                            <defs>
-                              <linearGradient id={`cmp-spark-${s.program}`} x1="0" x2="1" y1="0" y2="0">
-                                <stop offset="0%" stopColor="#818cf8" stopOpacity="0.95" />
-                                <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.85" />
-                              </linearGradient>
-                            </defs>
-                            <polyline
-                              fill="none"
-                              stroke={`url(#cmp-spark-${s.program})`}
-                              strokeWidth="2"
-                              points={sparkData.poly}
-                            />
-                          </svg>
-                        ) : (
-                          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/60">
-                            No history
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {s.historyUpdatedAt ? (
-                      <div className="mt-3 text-[11px] text-white/50">Updated: {formatUpdatedAt(s.historyUpdatedAt)}</div>
-                    ) : null}
-                  </button>
-                );
-              })}
-
-              {compareError ? (
-                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200 lg:col-span-2">
-                  {compareError}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="mt-4 text-sm text-white/60">Compare is off.</div>
-          )}
-        </section>
-
-        {/* KPI bar */}
-        <section className="mb-6 rounded-4xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className={["rounded-full border px-2.5 py-1 text-[11px] font-semibold", zonePillClass(marketZone)].join(" ")}>
-                {zoneLabel(marketZone)} • {gapLabel(marketGap, profile.hasPnp)}
               </div>
+              </div>
+            </GlassPanel>
+          </MotionReveal>
+        ) : null}
 
-              {cutoffError ? (
-                <div className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
-                  Insights warning
-                </div>
-              ) : null}
-            </div>
-
-            {/* sparkline + meta */}
-            <div className="flex items-center gap-3">
-              {spark ? (
-                <div className="hidden rounded-2xl border border-white/10 bg-black/20 px-3 py-2 md:block">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-semibold text-white/60">Cutoff trend</div>
-                      <div className="mt-0.5 text-xs font-semibold text-white/85">{spark.tLabel}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-white/55">
-                        {spark.firstDate} → {spark.lastDate}
-                      </div>
-                      <div className="text-xs font-semibold text-white/85">
-                        {spark.oldest} → {spark.latest}
-                      </div>
+        {!baseProfileReady || !storedProfile ? null : (
+          <>
+        {/* Market overview + optional details */}
+        <MotionReveal delay={0.12}>
+        <GlassPanel className="mb-6 rounded-[34px]">
+          <MarketOverview
+            programLabel={programLabel(programTarget)}
+            marketZoneLabel={zoneLabel(marketZone)}
+            marketZoneClass={zonePillClass(marketZone)}
+            showMarketDetails={showMarketDetails}
+            onToggleMarketDetails={() => setShowMarketDetails((v) => !v)}
+            snapshotToneClass={gapToneClassWithPnp(marketGap, profile.hasPnp)}
+            effectiveBaseCrs={effectiveBaseCrs}
+            cutoff={cutoff}
+            marketGap={marketGap}
+            gapLabel={gapLabel(marketGap, profile.hasPnp)}
+            hasPnp={profile.hasPnp}
+            trendLabel={benchMeta.trendLabel}
+            marketDirectionText={
+              cutoffLoading
+                ? "Refreshing latest market movement…"
+                : cutoffError
+                ? "Using fallback benchmark data."
+                : bench
+                ? `Source: ${benchMeta.source}`
+                : "Benchmark unavailable."
+            }
+            progressWidth={Math.max(8, Math.min(100, (effectiveBaseCrs / Math.max(1, cutoff)) * 100))}
+            detailsContent={
+              <div className="rounded-3xl border border-white/10 bg-black/15 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Detailed market compare</div>
+                    <div className="mt-1 text-xs text-white/55">
+                      Compare General vs Category only when you want more context.
                     </div>
                   </div>
-                  <svg viewBox="0 0 100 40" className="mt-2 h-10 w-64">
-                    <defs>
-                      <linearGradient id="spark-grad" x1="0" x2="1" y1="0" y2="0">
-                        <stop
-                          offset="0%"
-                          stopColor={spark.delta > 0 ? "#fb7185" : spark.delta < 0 ? "#34d399" : "#60a5fa"}
-                          stopOpacity="0.95"
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor={spark.delta > 0 ? "#f59e0b" : spark.delta < 0 ? "#22d3ee" : "#818cf8"}
-                          stopOpacity="0.85"
-                        />
-                      </linearGradient>
-                    </defs>
-                    <polyline fill="none" stroke="url(#spark-grad)" strokeWidth="2" points={spark.poly} />
-                  </svg>
-                </div>
-              ) : (
-                <div className="hidden rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/60 md:block">
-                  No draw history yet
-                </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                  <div className="text-[10px] font-semibold text-white/60">Latest cutoff</div>
-                  <div className="mt-0.5 text-sm font-semibold text-white">{cutoff}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                  <div className="text-[10px] font-semibold text-white/60">Trend</div>
-                  <div className="mt-0.5 text-sm font-semibold text-white">{benchMeta.trendLabel}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] font-semibold text-white/60">Your CRS</div>
-                    {profile.hasPnp ? (
-                      <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
-                        +600 PNP
+                  <div className="flex items-center gap-2">
+                    {compareLoading ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/75">
+                        Loading…
                       </span>
                     ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setCompareMode((v) => !v)}
+                      className={[
+                        "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                        compareMode
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+                      ].join(" ")}
+                    >
+                      Compare: {compareMode ? "On" : "Off"}
+                    </button>
                   </div>
-                  <div className="mt-0.5 text-sm font-semibold text-white">{effectiveBaseCrs}</div>
                 </div>
-                <div className={["rounded-2xl border px-3 py-2", gapToneClassWithPnp(marketGap, profile.hasPnp)].join(" ")}>
-                  <div className="text-[10px] font-semibold opacity-80">Gap</div>
-                  <div className="mt-0.5 text-sm font-semibold">{gapLabel(marketGap, profile.hasPnp)}</div>
-                </div>
+
+                {compareMode ? (
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {([compare.general, compare.category] as Array<CompareSeries | undefined>).map((s) => {
+                      if (!s) return null;
+
+                      const hasHist = Array.isArray(s.history) && s.history.length >= 2;
+                      const sparkData = hasHist ? sparklinePoints(s.history) : null;
+
+                      const winner =
+                        compare.general && compare.category
+                          ? s.program ===
+                            (Math.abs(compare.general.gap) <= Math.abs(compare.category.gap)
+                              ? compare.general.program
+                              : compare.category.program)
+                          : false;
+
+                      return (
+                        <button
+                          key={s.program}
+                          type="button"
+                          onClick={() => setProgramTarget(s.program)}
+                          className={[
+                            "w-full text-left rounded-3xl border bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition",
+                            "hover:border-white/20 hover:bg-black/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
+                            s.program === programTarget ? "border-indigo-500/30 ring-1 ring-indigo-500/25" : "border-white/10",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-sm font-semibold text-white">{programLabel(s.program)}</div>
+
+                                {winner ? (
+                                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                                    Better right now
+                                  </span>
+                                ) : null}
+
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] font-semibold text-white/70">
+                                  {s.source}
+                                </span>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                                  <div className="text-[10px] font-semibold text-white/60">Cutoff</div>
+                                  <div className="mt-0.5 text-sm font-semibold text-white">{s.cutoff || "—"}</div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                                  <div className="text-[10px] font-semibold text-white/60">Trend</div>
+                                  <div className="mt-0.5 text-sm font-semibold text-white">{s.trendLabel}</div>
+                                </div>
+
+                                <div className={["rounded-2xl border px-3 py-2", gapToneClassWithPnp(s.gap, profile.hasPnp)].join(" ")}>
+                                  <div className="text-[10px] font-semibold opacity-80">Gap</div>
+                                  <div className="mt-0.5 text-sm font-semibold">{gapLabel(s.gap, profile.hasPnp)}</div>
+                                </div>
+
+                                <div className={["rounded-2xl border px-3 py-2", zonePillClass(s.zone)].join(" ")}>
+                                  <div className="text-[10px] font-semibold opacity-80">Zone</div>
+                                  <div className="mt-0.5 text-xs font-semibold leading-tight line-clamp-2">
+                                    {zoneLabel(s.zone)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0">
+                              {sparkData ? (
+                                <svg viewBox="0 0 100 40" className="h-10 w-28">
+                                  <defs>
+                                    <linearGradient id={`cmp-spark-${s.program}`} x1="0" x2="1" y1="0" y2="0">
+                                      <stop offset="0%" stopColor="#818cf8" stopOpacity="0.95" />
+                                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.85" />
+                                    </linearGradient>
+                                  </defs>
+                                  <polyline
+                                    fill="none"
+                                    stroke={`url(#cmp-spark-${s.program})`}
+                                    strokeWidth="2"
+                                    points={sparkData.poly}
+                                  />
+                                </svg>
+                              ) : (
+                                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/60">
+                                  No history
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {s.historyUpdatedAt ? (
+                            <div className="mt-3 text-[11px] text-white/50">Updated: {formatUpdatedAt(s.historyUpdatedAt)}</div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+
+                    {compareError ? (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200 lg:col-span-2">
+                        {compareError}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-4 text-sm text-white/60">Compare is off.</div>
+                )}
               </div>
-            </div>
-          </div>
-        </section>
+            }
+          />
+        </GlassPanel>
+        </MotionReveal>
+
 
         {/* MAIN GRID */}
-        <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
-          {/* LEFT: Inputs */}
-          <div className="group rounded-4xl border border-white/10 bg-white/5 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-white/20 hover:bg-white/6 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_20px_60px_-40px_rgba(99,102,241,0.55)] lg:sticky lg:top-24 lg:h-fit">
-            <div className="text-sm font-semibold text-white">Inputs</div>
-
-            <div className="mt-4 space-y-4">
-              {/* Baseline CRS */}
-              <label className="block">
-                <div className="text-xs font-semibold text-white/70">Baseline CRS</div>
-                <input
-                  type="number"
-                  value={baseCrs}
-                  onChange={(e) => setBaseCrs(Number(e.target.value || 0))}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  placeholder="e.g., 472"
-                  min={1}
-                  max={2000}
-                />
-                <div className="mt-1 text-[11px] text-white/50">
-                  Used as your current score baseline.
-                  {hasPnp ? (
-                    <span className="ml-1 text-amber-200">PNP is ON → +600 will be added (effective CRS: {effectiveBaseCrs}).</span>
-                  ) : null}
-                </div>
-              </label>
-
-              {/* IELTS CLB */}
-              <label className="block">
-                <div className="text-xs font-semibold text-white/70">IELTS (English) CLB</div>
-                <input
-                  type="number"
-                  value={ieltsClb}
-                  onChange={(e) => setIeltsClb(Number(e.target.value || 0))}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  min={0}
-                  max={10}
-                />
-                <div className="mt-1 text-[11px] text-white/50">Common targets: CLB 9+.</div>
-              </label>
-
-              {/* French CLB */}
-              <label className="block">
-                <div className="text-xs font-semibold text-white/70">French CLB</div>
-                <input
-                  type="number"
-                  value={frenchClb}
-                  onChange={(e) => setFrenchClb(Number(e.target.value || 0))}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  min={0}
-                  max={10}
-                />
-                <div className="mt-1 text-[11px] text-white/50">B2 is usually around CLB 9+.</div>
-              </label>
-
-              {/* Canadian Exp */}
-              <label className="block">
-                <div className="text-xs font-semibold text-white/70">Canadian experience (years)</div>
-                <input
-                  type="number"
-                  value={canExpYears}
-                  onChange={(e) => setCanExpYears(Number(e.target.value || 0))}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  min={0}
-                  max={5}
-                />
-                <div className="mt-1 text-[11px] text-white/50">We cap at 5 for the MVP.</div>
-              </label>
-
-              {/* Toggles */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setHasJobOffer((v) => !v)}
-                  className={[
-                    "rounded-2xl border px-4 py-3 text-left transition",
-                    hasJobOffer
-                      ? "border-emerald-500/30 bg-emerald-500/10"
-                      : "border-white/10 bg-white/5 hover:bg-white/10",
-                  ].join(" ")}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-white/80">Has job offer</div>
-                    <div
-                      className={[
-                        "h-5 w-10 rounded-full border p-0.5",
-                        hasJobOffer ? "border-emerald-500/30 bg-emerald-500/15" : "border-white/10 bg-black/20",
-                      ].join(" ")}
-                    >
-                      <div
-                        className={[
-                          "h-4 w-4 rounded-full transition",
-                          hasJobOffer ? "translate-x-5 bg-emerald-300" : "translate-x-0 bg-white/60",
-                        ].join(" ")}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-1 text-[11px] text-white/50">Used to model the job-offer scenario.</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setHasPnp((v) => !v)}
-                  className={[
-                    "rounded-2xl border px-4 py-3 text-left transition",
-                    hasPnp ? "border-emerald-500/30 bg-emerald-500/10" : "border-white/10 bg-white/5 hover:bg-white/10",
-                  ].join(" ")}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-white/80">Already has PNP</div>
-                    <div
-                      className={[
-                        "h-5 w-10 rounded-full border p-0.5",
-                        hasPnp ? "border-emerald-500/30 bg-emerald-500/15" : "border-white/10 bg-black/20",
-                      ].join(" ")}
-                    >
-                      <div
-                        className={[
-                          "h-4 w-4 rounded-full transition",
-                          hasPnp ? "translate-x-5 bg-emerald-300" : "translate-x-0 bg-white/60",
-                        ].join(" ")}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-1 text-[11px] text-white/50">If true, PNP scenario becomes ineligible.</div>
-                </button>
-              </div>
-
-              {/* Language */}
-              <label className="block">
-                <div className="text-xs font-semibold text-white/70">Language</div>
-                <select
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value as Lang)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-                >
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                </select>
-              </label>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-white/60">
-                <div className="font-semibold text-white/80">MVP note</div>
-                <div className="mt-1">
-                  The benchmark shows the latest cutoff and its direction (vs the previous draw) for the selected program.
-                  Use it to measure your real gap and competitiveness.
-                </div>
-              </div>
-            </div>
-          </div>
+        <motion.div
+          className="grid gap-8 lg:grid-cols-[420px_1fr]"
+          initial="hidden"
+          animate="visible"
+          variants={staggerShell}
+        >
+          {/* LEFT: Profile + simulation controls */}
+          <motion.div
+            variants={fadeUp}
+            className="group lg:sticky lg:top-24 lg:h-fit"
+          >
+          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 hover:bg-white/[0.055] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_26px_72px_-42px_rgba(99,102,241,0.55)]">
+            <ProfileSummaryPanel
+              profileSummaryItems={profileSummaryItems}
+              availableOpportunities={availableOpportunities}
+              scenarioToggles={selectedOpportunityLookup}
+              activeToggleCount={activeToggleCount}
+              onToggleOpportunity={(scenarioId) => {
+                setSelectedOpportunityIds((prev) =>
+                  prev.includes(scenarioId)
+                    ? prev.filter((id) => id !== scenarioId)
+                    : [...prev, scenarioId]
+                );
+              }}
+              onClearPreviews={() => setSelectedOpportunityIds([])}
+            />
+          </GlassPanel>
+          </motion.div>
 
           {/* RIGHT: Results */}
-          <div className="group rounded-4xl border border-white/10 bg-white/5 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-white/20 hover:bg-white/6 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_20px_60px_-40px_rgba(99,102,241,0.55)]">
+          <motion.div variants={fadeUp}>
+          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 hover:bg-white/[0.055] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_26px_72px_-42px_rgba(99,102,241,0.55)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-white">Recommended plan</div>
+                <div className="text-sm font-semibold text-white">Your best improvement plan</div>
 
                 <div className="mt-1 text-xs text-white/60">
                   Effective CRS: <span className="font-semibold text-white/90">{effectiveBaseCrs}</span>
                   {profile.hasPnp ? <span className="ml-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">+600 PNP</span> : null}
                   <span className="mx-2 text-white/20">•</span>
-                  English CLB: <span className="font-semibold text-white/90">{profile.ieltsClb}</span>
+                  English CLB: <span className="font-semibold text-white/90">{effectiveEnglishClb}</span>
                   <span className="mx-2 text-white/20">•</span>
                   French CLB: <span className="font-semibold text-white/90">{profile.frenchClb}</span>
                   <span className="mx-2 text-white/20">•</span>
                   CEC: <span className="font-semibold text-white/90">{profile.canExpYears}y</span>
                   <span className="mx-2 text-white/20">•</span>
                   Program: <span className="font-semibold text-white/90">{programLabel(programTarget)}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/70">
+                    {userPlan === "pro" ? "Pro plan active" : "Free preview active"}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/60">
+                    {userPlan === "pro"
+                      ? "Premium strategy pages unlock when available"
+                      : "Upgrade to save and track your roadmap"}
+                  </span>
+                  {activeToggleCount > 0 ? (
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-100">
+                      Previewing {activeToggleCount} improvement{activeToggleCount === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
                 </div>
                 {loadedRoadmapEmail ? (
                   <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
@@ -1600,9 +2497,9 @@ export default function SimulatorMVP() {
                         <div className="text-xs font-semibold uppercase tracking-wide text-blue-200/80">
                           Loaded roadmap
                         </div>
-                        <div className="mt-1 text-sm font-semibold text-white">{loadedRoadmapEmail}</div>
+                        <div className="mt-1 text-sm font-semibold text-white">Saved to your account</div>
                         <div className="mt-1 text-xs text-white/60">
-                          {loadedRoadmapCreatedAt ? `Saved on ${formatUpdatedAt(loadedRoadmapCreatedAt)}` : "Saved previously"}
+                          {loadedRoadmapCreatedAt ? `Saved on ${formatUpdatedAt(loadedRoadmapCreatedAt)}` : loadedRoadmapEmail}
                         </div>
                       </div>
 
@@ -1612,183 +2509,75 @@ export default function SimulatorMVP() {
                     </div>
                   </div>
                 ) : null}
-                {projectionSummary ? (
-                  <div className="mt-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="max-w-2xl">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-200/80">
-                          Projection Summary
-                        </div>
-                        <div className="mt-2 text-sm text-white/70">{projectionSummary.recommendation}</div>
-                      </div>
 
-                      <div className="grid w-full gap-3 md:w-auto md:min-w-105 md:grid-cols-2">
-                        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
-                            Best realistic move
-                          </div>
-                          {projectionSummary.realisticMove ? (
-                            <>
-                              <div className="mt-2 text-sm font-semibold text-white">
-                                {projectionSummary.realisticMove.title}
-                              </div>
-                              <div className="mt-3 text-2xl font-bold text-emerald-200">
-                                {projectionSummary.realisticMove.projectedCrs}
-                              </div>
-                              <div className="mt-1 text-xs text-white/60">
-                                Current {projectionSummary.currentCrs}
-                                <span className="mx-2 text-white/30">→</span>
-                                Gain +{projectionSummary.realisticMove.delta}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="mt-2 text-sm font-semibold text-white">No non-PNP move yet</div>
-                              <div className="mt-3 text-xs text-white/60">
-                                Your current strongest path is still the highest possible one below.
-                              </div>
-                            </>
-                          )}
+                {recommendationSummary.bestRealisticPath || recommendationSummary.highestUpsidePath ? (
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {recommendationSummary.bestRealisticPath ? (
+                      <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/10 p-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-100/80">
+                          Best realistic path right now
                         </div>
-
-                        <div className="rounded-2xl border border-emerald-500/20 bg-black/20 px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-200/70">
-                            Highest possible move
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-white">
-                            {projectionSummary.highestMove.title}
-                          </div>
-                          <div className="mt-3 text-2xl font-bold text-emerald-200">
-                            {projectionSummary.highestMove.projectedCrs}
-                          </div>
-                          <div className="mt-1 text-xs text-white/60">
-                            Current {projectionSummary.currentCrs}
-                            <span className="mx-2 text-white/30">→</span>
-                            Gain +{projectionSummary.highestMove.delta}
-                          </div>
+                        <div className="mt-3 text-base font-semibold text-white">
+                          {recommendationSummary.bestRealisticPath.title}
+                        </div>
+                        <div className="mt-2 text-sm text-white/64">
+                          The strongest user-actionable path based on impact, realism, and time-to-start.
                         </div>
                       </div>
-                    </div>
+                    ) : null}
+
+                    {recommendationSummary.highestUpsidePath ? (
+                      <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-400/10 p-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-100/80">
+                          Highest upside path
+                        </div>
+                        <div className="mt-3 text-base font-semibold text-white">
+                          {recommendationSummary.highestUpsidePath.title}
+                        </div>
+                        <div className="mt-2 text-sm text-white/64">
+                          Powerful, but often more conditional on stream fit, timing, or eligibility.
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
-                {/* Strategic Insight */}
-                {strategicInsight && (
-                  <div className="mt-4">
-                    <div className={["rounded-3xl bg-linear-to-r p-px", zoneGradient(strategicInsight.zone)].join(" ")}>
-                      <div className="rounded-3xl border border-white/10 bg-black/35 p-4 backdrop-blur">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="flex items-start gap-3">
-                            <div className={["grid h-10 w-10 place-items-center rounded-2xl border", zonePillClass(strategicInsight.zone)].join(" ")}>
-                              <span className="text-lg">{zoneIcon(strategicInsight.zone)}</span>
-                            </div>
+                <AIStrategyPanel
+                  userPlan={userPlan}
+                  loading={aiStrategyState === "loading"}
+                  error={aiStrategyState === "error" ? aiStrategyError : ""}
+                  recommendation={aiStrategyResult}
+                  accessDenied={aiStrategyAccessDenied}
+                  usage={aiUsage}
+                  preview={aiPreview}
+                  preferredName={preferredName}
+                  upgradeHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=ai", unlock: "ai" })}
+                  onGenerate={handleGenerateAiStrategy}
+                />
 
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-xs font-semibold text-white/80">Strategic Insight</div>
-                                <span className={["rounded-full border px-2.5 py-1 text-[11px] font-semibold", zonePillClass(strategicInsight.zone)].join(" ")}>
-                                  {strategicInsight.chip}
-                                </span>
-                              </div>
-
-                              <div className="mt-2 text-sm font-semibold text-white">{strategicInsight.headline}</div>
-                              <div className="mt-1 text-xs leading-relaxed text-white/70">{strategicInsight.detail}</div>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                              <div className="text-[10px] font-semibold text-white/60">Probability zone</div>
-                              <div className="mt-1 flex items-center gap-2">
-                                <span className={["rounded-full border px-2 py-0.5 text-[11px] font-semibold", zonePillClass(marketZone)].join(" ")}>
-                                  {zoneLabel(marketZone)}
-                                </span>
-                                <span className="text-[11px] text-white/60">•</span>
-                                <span className={"text-[11px] font-semibold " + (marketGap <= 0 ? "text-emerald-200" : "text-white/80")}>
-                                  {gapLabel(marketGap, profile.hasPnp)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* micro-bar */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between text-[10px] text-white/50">
-                            <span>Baseline {effectiveBaseCrs}</span>
-                            <span>Cutoff {cutoff}</span>
-                          </div>
-                          <div className="mt-2 h-2 w-full rounded-full bg-white/10">
-                            <div
-                              className={[
-                                "h-2 rounded-full bg-linear-to-r",
-                                marketGap <= 0
-                                  ? "from-emerald-400/60 to-cyan-400/40"
-                                  : marketGap <= 10
-                                  ? "from-blue-400/60 to-cyan-400/40"
-                                  : marketGap <= 30
-                                  ? "from-indigo-400/60 to-violet-400/40"
-                                  : "from-red-400/60 to-amber-400/40",
-                              ].join(" ")}
-                              style={{
-                                width: `${Math.max(6, Math.min(100, (effectiveBaseCrs / Math.max(1, cutoff)) * 100))}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Market reality */}
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div className="text-xs font-semibold text-white/80">Market reality (benchmark)</div>
-                      <div className="mt-1 text-[11px] text-white/50">
-                        Latest cutoff + trend vs previous draw for selected program.{" "}
-                        {cutoffLoading
-                          ? "Loading…"
-                          : cutoffError
-                          ? "Using fallback."
-                          : bench
-                          ? `Live (${benchMeta.source})`
-                          : "Using fallback."}
-                      </div>
-                      {cutoffLoading ? (
-                        <div className="mt-3 grid gap-2">
-                          <div className="h-3 w-56 animate-pulse rounded-full bg-white/10" />
-                          <div className="h-3 w-40 animate-pulse rounded-full bg-white/10" />
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-                        Cutoff: {cutoff}
-                      </div>
-
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-                        Trend: {benchMeta.trendLabel}
-                      </div>
-
-                      <div className={["rounded-full border px-3 py-1 text-xs font-semibold", gapToneClassWithPnp(marketGap, profile.hasPnp)].join(" ")}>
-                        {gapLabel(marketGap, profile.hasPnp)}
-                      </div>
-
-                      <div className={["rounded-full border px-3 py-1 text-xs font-semibold", zonePillClass(marketZone)].join(" ")}>
-                        {zoneLabel(marketZone)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {cutoffError && <div className="mt-3 text-[11px] text-amber-200">Insights warning: {cutoffError}</div>}
-                </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-sm font-semibold text-white">Save My Roadmap</div>
+                  <div className="text-sm font-semibold text-white">{saveRoadmapLabel}</div>
                   <div className="mt-1 text-xs text-white/60">
-                    Save this strategy to Supabase so you can track or reload it later.
+                    Save your current profile, strategy, and AI action layer to continue later.
+                  </div>
+                  <div className="mt-2 text-[11px] text-white/45">
+                    Saved roadmaps are tied to your authenticated account.
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {hasUnsavedRoadmapChanges ? (
+                      <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold text-amber-100">
+                        Unsaved changes
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
+                        Saved state up to date
+                      </span>
+                    )}
+                    {roadmapHistory.length >= 2 && userPlan === "pro" ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/65">
+                        Roadmap limit reached
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row">
@@ -1805,87 +2594,26 @@ export default function SimulatorMVP() {
                       userPlan === "pro" ? (
                         <button
                           type="button"
-                          onClick={handleSaveRoadmap}
-                          disabled={roadmapSaving || top.length === 0 || authUserLoading || userPlanLoading}
+                          onClick={() => void handleSaveRoadmap()}
+                          disabled={roadmapSaving || visibleTop.length === 0 || authUserLoading || userPlanLoading}
                           className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {roadmapSaving ? "Saving..." : "Save My Roadmap"}
+                          {roadmapSaving ? "Saving..." : saveRoadmapLabel}
                         </button>
                       ) : (
                         <Link
-                          href="/billing"
+                          href={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
                           className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/15"
                         >
-                          Upgrade to Pro
+                          Unlock your roadmap
                         </Link>
                       )
                     ) : (
                       <Link
-                        href="/login"
+                        href={buildLoginHref({ returnTo: "/simulator" })}
                         className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/15"
                       >
                         Login to Save
-                      </Link>
-                    )}
-                  </div>
-                  {authUserError ? (
-                    <div className="mt-2 text-xs text-amber-200">
-                      {authUserError}
-                    </div>
-                  ) : null}
-
-                  {roadmapMessage ? (
-                    <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-                      {roadmapMessage}
-                    </div>
-                  ) : null}
-
-                  {roadmapError ? (
-                    <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                      {roadmapError}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-sm font-semibold text-white">Load My Roadmap</div>
-                  <div className="mt-1 text-xs text-white/60">
-                    Restore your most recent roadmap using your authenticated session.
-                  </div>
-
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                    <div className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white/70">
-                      {authUserLoading ? "Checking session..." : authenticatedEmail || "Login required to load roadmaps"}
-                    </div>
-                    {authUser ? (
-                      <div className="mt-2 text-xs text-white/50">
-                        Current plan: {userPlanLoading ? "checking..." : userPlan}
-                      </div>
-                    ) : null}
-
-                    {authUser ? (
-                      userPlan === "pro" ? (
-                        <button
-                          type="button"
-                          onClick={handleLoadRoadmap}
-                          disabled={roadmapLoading || authUserLoading || userPlanLoading}
-                          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {roadmapLoading ? "Loading..." : "Load My Roadmap"}
-                        </button>
-                      ) : (
-                        <Link
-                          href="/billing"
-                          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-center text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15"
-                        >
-                          Upgrade to Pro
-                        </Link>
-                      )
-                    ) : (
-                      <Link
-                        href="/login"
-                        className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-center text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15"
-                      >
-                        Login to Load
                       </Link>
                     )}
                   </div>
@@ -1906,12 +2634,89 @@ export default function SimulatorMVP() {
                       {roadmapLoadError}
                     </div>
                   ) : null}
+
+                  {roadmapMessage ? (
+                    <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+                      {roadmapMessage}
+                    </div>
+                  ) : null}
+
+                  {roadmapError ? (
+                    <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                      {roadmapError}
+                    </div>
+                  ) : null}
+
+                  {roadmapReplaceMode && userPlan === "pro" && roadmapHistory.length > 0 ? (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                      <div className="text-sm font-semibold text-white">Replace an existing roadmap</div>
+                      <div className="mt-1 text-xs text-white/60">
+                        You can keep up to 2 saved roadmaps. Choose one to replace with your current strategy.
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {roadmapHistory.slice(0, 2).map((roadmap) => (
+                          <div
+                            key={roadmap.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-3"
+                          >
+                            <div>
+                              <div className="text-sm font-semibold text-white">
+                                {roadmapDisplayName(roadmap.profile_snapshot?.preferred_name)}
+                                <span className="mx-2 text-white/30">•</span>
+                                CRS {typeof roadmap.profile_snapshot?.baseCrs === "number" ? roadmap.profile_snapshot.baseCrs : "—"}
+                                <span className="mx-2 text-white/30">•</span>
+                                {programLabel(roadmap.program_target)}
+                              </div>
+                              <div className="mt-1 text-xs text-white/50">
+                                {formatUpdatedAt(roadmap.created_at) || roadmap.created_at}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveRoadmap(roadmap.id)}
+                              disabled={roadmapSaving}
+                              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {roadmapReplacingId === roadmap.id && roadmapSaving ? "Replacing..." : "Replace this roadmap"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {authUser && userPlan === "free" ? (
+                    <div className="mt-3 text-xs text-white/50">
+                      Unlock full strategy history and deeper insights when you’re ready.
+                    </div>
+                  ) : null}
+
+                  {authUser && userPlan === "free" ? (
+                    <div className="mt-4">
+                      <PremiumLockedPanel
+                        compact
+                        eyebrow="Roadmap saving"
+                        title="Unlock your roadmap"
+                        description="Free preview helps you understand your strongest next moves. Pro unlocks saved roadmaps, history, and a premium workflow you can return to."
+                        primaryHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
+                        primaryLabel="Unlock your roadmap"
+                        analyticsEvent="locked_strategy_clicked"
+                        bullets={[
+                          "Save roadmap snapshots",
+                          "Track strategy progress",
+                          "Return to your plan later",
+                        ]}
+                        note="Free users can preview the simulator first. Pro turns that preview into a saved strategy system."
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 {authUser && userPlan === "pro" && roadmapHistory.length > 0 ? (
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
                     <div className="text-sm font-semibold text-white">Your Saved Roadmaps</div>
                     <div className="mt-1 text-xs text-white/60">
-                      Previously saved strategies for your authenticated account.
+                      Restore or replace strategies saved to your authenticated account.
                     </div>
 
                     <div className="mt-3 space-y-3">
@@ -1922,6 +2727,8 @@ export default function SimulatorMVP() {
                         >
                           <div>
                             <div className="text-sm font-semibold text-white">
+                              {roadmapDisplayName(roadmap.profile_snapshot?.preferred_name)}
+                              <span className="mx-2 text-white/30">•</span>
                               CRS {typeof roadmap.profile_snapshot?.baseCrs === "number" ? roadmap.profile_snapshot.baseCrs : "—"}
                               <span className="mx-2 text-white/30">•</span>
                               {programLabel(roadmap.program_target)}
@@ -1937,7 +2744,7 @@ export default function SimulatorMVP() {
                               onClick={() => applyRoadmapToSimulator(roadmap)}
                               className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/15"
                             >
-                              Load
+                              Restore
                             </button>
 
                             <button
@@ -1953,6 +2760,26 @@ export default function SimulatorMVP() {
                     </div>
                   </div>
                 ) : null}
+                {authUser && userPlan === "free" ? (
+                  <div className="mt-4">
+                    <PremiumLockedPanel
+                      compact
+                      eyebrow="Premium workflow"
+                      title="Saved roadmaps and premium strategy live together on Pro"
+                      description="Free users can see where they stand and preview their top opportunities. Pro unlocks roadmap history, premium strategy paths, and a fuller decision workflow."
+                      primaryHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
+                      primaryLabel="See full roadmap"
+                      analyticsEvent="locked_strategy_clicked"
+                      secondaryHref="/insights"
+                      secondaryLabel="Preview strategy pages"
+                      bullets={[
+                        "Saved roadmap history",
+                        "Premium strategy pages",
+                        "Track and refine strategy",
+                      ]}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1962,74 +2789,151 @@ export default function SimulatorMVP() {
               </div>
             )}
 
-            {!error && !loading && top.length === 0 && (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                Enter valid inputs to see ranked scenarios.
+            <div className="mt-6">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">Best opportunities to increase your CRS</div>
+                  <div className="mt-1 text-sm text-white/60">
+                    {selectedOpportunityIds.length > 0
+                      ? "Previewing the exact improvements you selected on the left."
+                      : "These are the strongest score-improvement paths available from your current profile."}
+                  </div>
+                </div>
+                {isRefreshing ? (
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/72 backdrop-blur">
+                    Updating strategy...
+                  </div>
+                ) : null}
               </div>
-            )}
 
-            <div className="mt-4 grid gap-3">
-              {top.map((s) => {
-                const isPnpScenario = s.id === "pnp" || s.title.toLowerCase().includes("pnp");
+              {selectedOpportunityIds.length > 0 ? (
+                <motion.div
+                  className="grid gap-4"
+                  variants={staggerShell}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {visibleOpportunityCards.map((card, index) =>
+                    card.isReady && card.scenario ? (
+                      <ScenarioOpportunityCard
+                        key={card.id}
+                        scenario={card.scenario}
+                        profile={baseProfile ?? profile}
+                        cutoff={cutoff}
+                        userPlan={userPlan}
+                        topTier
+                        animated={index < 3}
+                      />
+                    ) : (
+                      <OpportunitySkeletonCard key={card.id} topTier />
+                    )
+                  )}
+                </motion.div>
+              ) : showOpportunitySkeletons ? (
+                <motion.div
+                  className="grid gap-4"
+                  initial={{ opacity: 0.55 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {[0, 1, 2].map((index) => (
+                    <OpportunitySkeletonCard key={index} topTier />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  className="grid gap-4"
+                  variants={staggerShell}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {primaryVisibleTop.map((scenario) => (
+                    <ScenarioOpportunityCard
+                      key={scenario.id}
+                      scenario={scenario}
+                      profile={profile}
+                      cutoff={cutoff}
+                      userPlan={userPlan}
+                      topTier
+                      animated
+                    />
+                  ))}
+                </motion.div>
+              )}
 
-                const rawNewCrs = typeof s.newCrs === "number" ? s.newCrs : profile.baseCrs + s.delta;
-                const newCrs = profile.hasPnp && !isPnpScenario ? rawNewCrs + 600 : rawNewCrs;
+              {!error &&
+              !isInitialLoading &&
+              selectedOpportunityIds.length === 0 &&
+              primaryVisibleTop.length === 0 &&
+              extraVisibleTop.length === 0 ? (
+                <div className="mt-4 rounded-[28px] border border-white/10 bg-white/5 p-5 text-white/72">
+                  <div className="text-sm font-semibold text-white">No opportunities available yet</div>
+                  <div className="mt-2 text-sm leading-6 text-white/62">
+                    Complete your profile inputs to generate a stronger strategy view.
+                  </div>
+                </div>
+              ) : null}
 
-                const afterGap = cutoff - newCrs;
+              {selectedOpportunityIds.length === 0 && extraVisibleTop.length > 0 ? (
+                <div className="mt-5">
+                  {userPlan === "pro" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllScenarios((v) => !v)}
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
+                      >
+                        {showAllScenarios ? "Hide extra opportunities" : "Show more opportunities"}
+                      </button>
 
-                const afterZone = profile.hasPnp
-                  ? ("nomination" as Zone)
-                  : isPnpScenario && s.eligible
-                  ? ("nomination" as Zone)
-                  : zoneFromGap(afterGap);
-
-                return (
-                  <div
-                    key={s.id}
-                    className="rounded-3xl border border-white/10 bg-black/30 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition hover:-translate-y-px hover:border-white/20 hover:bg-black/25"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-sm font-semibold text-white">{s.title}</div>
-
-                          <span className={["rounded-full border px-2 py-0.5 text-[11px] font-semibold", deltaPillClass(s.delta)].join(" ")}>
-                            {deltaLabel(s.delta)}
-                          </span>
-                        </div>
-
-                        <div className="mt-1 text-xs text-white/60">{s.description}</div>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <div className="text-[11px] text-white/60">After this improvement:</div>
-
-                          <div
-                            className={[
-                              "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                              gapToneClassWithPnp(afterGap, profile.hasPnp || (isPnpScenario && s.eligible)),
-                            ].join(" ")}
-                          >
-                            {gapLabel(afterGap, profile.hasPnp || (isPnpScenario && s.eligible))} vs cutoff {cutoff}
-                          </div>
-
-                          <div className={["rounded-full border px-2 py-0.5 text-[11px] font-semibold", zonePillClass(afterZone)].join(" ")}>
-                            {zoneLabel(afterZone)}
-                          </div>
-                        </div>
+                      <AnimatePresence initial={false}>
+                      {showAllScenarios ? (
+                        <motion.div
+                          className="mt-4 grid gap-4"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          {extraVisibleTop.map((scenario) => (
+                            <ScenarioOpportunityCard
+                              key={scenario.id}
+                              scenario={scenario}
+                              profile={profile}
+                              cutoff={cutoff}
+                              userPlan={userPlan}
+                            />
+                          ))}
+                        </motion.div>
+                      ) : null}
+                      </AnimatePresence>
+                    </>
+                  ) : (
+                    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5 shadow-[0_18px_48px_-34px_rgba(34,211,238,0.35)]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                        Unlock your roadmap
                       </div>
-
-                      <div className="shrink-0 text-right">
-                        <div className="rounded-2xl bg-linear-to-r from-indigo-600 to-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(59,130,246,0.55)]">
-                          +{s.delta}
-                        </div>
-                        <div className="mt-2 text-xs text-white/70">New CRS: {newCrs}</div>
+                      <div className="mt-3 text-xl font-semibold text-white">
+                        See your full strategy beyond the first preview.
+                      </div>
+                      <div className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                        Free preview shows your strongest opportunities first. Upgrade to compare the remaining paths, unlock premium strategy guidance, and save your roadmap.
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <Link
+                          href={buildBillingHref({ returnTo: "/simulator?upgradeTarget=strategy", unlock: "strategy" })}
+                          className="rounded-full border border-cyan-400/20 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                        >
+                          See your full strategy
+                        </Link>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/65">
+                          Free preview active
+                        </span>
                       </div>
                     </div>
-
-                    {!s.eligible && <div className="mt-3 text-xs text-amber-200">Not eligible for this scenario (based on current inputs).</div>}
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              ) : null}
             </div>
 
             {/* footer hint */}
@@ -2040,8 +2944,11 @@ export default function SimulatorMVP() {
               </div>
               <div className="text-xs text-white/50">v2.3 • Benchmark + Strategy</div>
             </div>
-          </div>
-        </div>
+          </GlassPanel>
+          </motion.div>
+        </motion.div>
+          </>
+        )}
       </main>
     </div>
   );

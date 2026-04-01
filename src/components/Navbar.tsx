@@ -1,0 +1,209 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { getBaseProfileOwnerKey, readStoredBaseProfile } from "@/lib/crs/baseProfile";
+import { getPreferredName } from "@/lib/personalization";
+
+export default function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [uiLang, setUiLang] = useState<"en" | "es">(() => {
+    if (typeof window === "undefined") {
+      return "en";
+    }
+
+    try {
+      const saved = window.localStorage.getItem("crs_ui_lang");
+      return saved === "en" || saved === "es" ? saved : "en";
+    } catch {
+      return "en";
+    }
+  });
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let mounted = true;
+
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (mounted) {
+        setUser(user);
+      }
+    };
+
+    void loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setUser(session?.user ?? null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const preferredName = useMemo(() => {
+    const ownerKey = getBaseProfileOwnerKey(user);
+    const stored = readStoredBaseProfile(ownerKey);
+    return getPreferredName(stored);
+  }, [user]);
+
+  const setLanguage = (nextLang: "en" | "es") => {
+    setUiLang(nextLang);
+
+    try {
+      window.localStorage.setItem("crs_ui_lang", nextLang);
+      window.dispatchEvent(new CustomEvent("crs-ui-lang-change", { detail: nextLang }));
+    } catch {
+      // ignore client storage failures
+    }
+  };
+
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  };
+
+  const isActive = (path: string) => pathname === path;
+
+  return (
+    <header className="fixed left-0 top-0 z-50 w-full">
+      <div className="mx-auto max-w-7xl px-6 py-1">
+        <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.04] px-6 py-0.5 shadow-[0_0_40px_rgba(59,130,246,0.08)] backdrop-blur-2xl md:py-1">
+          <Link href="/" className="group relative flex min-w-[240px] items-center md:min-w-[280px]">
+            <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-blue-500/5 opacity-70 blur-2xl" />
+            <Image
+              src="/logo-prave.png"
+              alt="PRAVÉ"
+              width={260}
+              height={96}
+              priority
+              className="
+                h-[150px] md:h-[178px]
+                w-auto
+                object-contain
+                transition duration-300
+                -my-6 md:-my-8
+                group-hover:scale-[1.05]
+                group-hover:drop-shadow-[0_0_28px_rgba(59,130,246,0.7)]
+              "
+            />
+            <span className="ml-2 text-sm font-medium tracking-[0.04em] text-white/60">
+              Your Roadmap to PR
+            </span>
+          </Link>
+
+          <nav className="flex items-center gap-3">
+            <Link
+              href="/simulator"
+              className={`rounded-xl px-4 py-2 text-sm transition ${
+                isActive("/simulator")
+                  ? "bg-blue-500/20 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+                  : "text-white/75 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              Simulator
+            </Link>
+
+            {user ? (
+              <Link
+                href="/dashboard"
+                className={`rounded-xl px-4 py-2 text-sm transition ${
+                  isActive("/dashboard")
+                    ? "bg-purple-500/20 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)]"
+                    : "text-white/75 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                Dashboard
+              </Link>
+            ) : null}
+
+            <Link
+              href="/"
+              className={`rounded-xl px-4 py-2 text-sm transition ${
+                isActive("/")
+                  ? "bg-white/10 text-white"
+                  : "text-white/65 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              Home
+            </Link>
+
+            <div className="ml-2 flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-1">
+              <button
+                type="button"
+                onClick={() => setLanguage("en")}
+                className={`rounded-lg px-2 py-1 text-xs transition ${
+                  uiLang === "en" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage("es")}
+                className={`rounded-lg px-2 py-1 text-xs transition ${
+                  uiLang === "es" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                ES
+              </button>
+            </div>
+
+            {user && preferredName ? (
+              <div className="ml-2 flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-medium text-white shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_40px_-28px_rgba(59,130,246,0.45)] backdrop-blur-xl">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-300/20 bg-black/25 text-blue-100/90">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      d="M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-3.314 0-6 1.79-6 4v1h12v-1c0-2.21-2.686-4-6-4Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+                <span className="tracking-[0.02em] text-white/92">{preferredName}</span>
+              </div>
+            ) : null}
+
+            {!user ? (
+              <Link
+                href="/login"
+                className="ml-2 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300 shadow-[0_16px_32px_-24px_rgba(34,197,94,0.5)] transition hover:bg-green-500/20 hover:text-white"
+              >
+                Sign in
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="ml-2 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 shadow-[0_16px_32px_-24px_rgba(239,68,68,0.45)] transition hover:bg-red-500/20 hover:text-white"
+              >
+                Sign out
+              </button>
+            )}
+          </nav>
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUserPlan, isProUser } from "@/lib/subscriptions";
 
 type RoadmapListRow = {
   id: string;
@@ -9,7 +11,7 @@ type RoadmapListRow = {
   created_at: string;
 };
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,13 +23,25 @@ export async function GET(req: Request) {
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const email = (searchParams.get("email") ?? "").trim().toLowerCase();
+    const authSupabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await authSupabase.auth.getUser();
 
-    if (!email) {
+    if (userError || !user) {
       return NextResponse.json(
-        { ok: false, error: "Missing email" },
-        { status: 400 }
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const plan = await getUserPlan(user.id);
+
+    if (!isProUser(plan)) {
+      return NextResponse.json(
+        { ok: false, error: "Pro required" },
+        { status: 403 }
       );
     }
 
@@ -36,7 +50,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("roadmaps")
       .select("id, email, profile_snapshot, program_target, created_at")
-      .eq("email", email)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {

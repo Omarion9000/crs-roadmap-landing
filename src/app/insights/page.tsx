@@ -1,46 +1,114 @@
 import Link from "next/link";
-import InsightsClient from "@/components/insights/InsightsClient";
+import InsightNavCard from "@/components/insights/InsightNavCard";
+import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
+import { strategyPageList } from "@/lib/insights/strategyPages";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUserPlan } from "@/lib/subscriptions";
+import { buildBillingHref, buildLoginHref } from "@/lib/upgrade";
 
-export default function InsightsPage() {
+export default async function InsightsPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const userPlan = user ? await getUserPlan(user.id) : "free";
+  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
+  const isPro = normalizedPlan === "pro";
+
   return (
-    <main className="min-h-screen bg-[#070A12] text-white">
-      {/* Premium background */}
+    <main className="min-h-screen overflow-x-hidden bg-[#070A12] px-6 py-12 text-white">
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-linear-to-b from-[#070A12] via-[#070A12] to-black" />
-        <div className="absolute -top-44 left-1/2 h-80 w-240 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute top-28 -right-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute -bottom-48 -left-40 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-linear-to-b from-[#08101F] via-[#070A12] to-black" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:88px_88px] opacity-[0.04]" />
+        <div className="absolute left-1/2 top-[-10rem] h-[24rem] w-[56rem] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute right-[-8rem] top-24 h-[22rem] w-[22rem] rounded-full bg-indigo-500/10 blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white text-black font-semibold">
-              C
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/simulator"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            Back to simulator
+          </Link>
+          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/65">
+            {isPro ? "Premium strategy access" : "Strategy preview hub"}
+          </div>
+        </div>
+
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.045] p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(34,211,238,0.35)] backdrop-blur-xl sm:p-10">
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-cyan-500/10 via-transparent to-indigo-500/10" />
+          <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
+
+          <div className="relative z-10 max-w-3xl">
+            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+              Premium strategy library
             </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-white">
-                Express Entry Intelligence
+
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Strategy paths built on top of your simulator.
+            </h1>
+
+            <p className="mt-5 max-w-2xl text-base leading-8 text-white/66">
+              Explore the strategy library that turns score projections into a clearer product workflow. Each page is structured to support future guidance grounded in official Express Entry rules, current program requirements, and authoritative Canada.ca / IRCC references.
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[22px] border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Free access
+                </div>
+                <div className="mt-2 text-sm font-semibold text-white">
+                  Preview the structure and why each path matters
+                </div>
               </div>
-              <div className="text-xs text-white/60">
-                Live dashboard (mock) — real data next
+              <div className="rounded-[22px] border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Pro access
+                </div>
+                <div className="mt-2 text-sm font-semibold text-white">
+                  Unlock the full premium strategy workflow
+                </div>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Product role
+                </div>
+                <div className="mt-2 text-sm font-semibold text-white">
+                  Connect simulator insight to roadmap execution
+                </div>
               </div>
             </div>
           </div>
+        </section>
 
-          <Link
-            href="/"
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/10"
-          >
-            Back to landing
-          </Link>
-        </div>
-      </header>
+        <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {strategyPageList.map((page) => (
+            <InsightNavCard key={page.slug} page={page} isPro={isPro} />
+          ))}
+        </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8">
-        <InsightsClient />
-      </section>
+        {!isPro ? (
+          <section className="mt-8">
+            <PremiumLockedPanel
+              title="Unlock premium strategy paths"
+              description="Free users can preview the simulator and understand the value of each path. Pro unlocks the strategy library, roadmap saving, roadmap history, and the full premium workflow."
+              primaryHref={user ? buildBillingHref({ returnTo: "/insights", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights" })}
+              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              secondaryHref="/simulator"
+              secondaryLabel="Return to simulator"
+              bullets={[
+                "Strategy library access",
+                "Save and load roadmaps",
+                "Track personalized progress",
+              ]}
+              note="Final guidance will reflect current IRCC criteria and official Canada.ca sources."
+            />
+          </section>
+        ) : null}
+      </div>
     </main>
   );
 }

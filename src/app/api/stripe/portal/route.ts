@@ -48,6 +48,13 @@ export async function POST() {
       );
     }
 
+    // TEMP DEBUG: confirm the portal route is reading the expected runtime secret.
+    console.log("[stripe portal] using customer:", subscription.stripe_customer_id);
+    console.log(
+      "[stripe portal] runtime secret suffix:",
+      process.env.STRIPE_SECRET_KEY?.slice(-6)
+    );
+
     const stripe = getStripeServer();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 

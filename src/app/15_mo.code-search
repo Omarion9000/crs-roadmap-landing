@@ -1,0 +1,132 @@
+# Query: 15/mo
+# ContextLines: 1
+
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
+import { ExternalLink } from 'lucide-react';
+
+const Projects: React.FC = () => {
+  const { t } = useTranslation();
+  const projects = t('projects.projects', { returnObjects: true }) as Array<{
+    title: string;
+    description: string;
+    link: string;
+    image: string;
+  }>;
+
+  const additionalProjects = [
+    {
+      title: 'Colaboración con el trompetista Kiwzo Fumero en Miami',
+      description:
+        'Participación en una colaboración musical junto al trompetista Kiwzo Fumero en Miami.',
+      link: 'https://www.youtube.com/watch?v=lg5YUr3mPd0',
+      image: 'https://img.youtube.com/vi/lg5YUr3mPd0/hqdefault.jpg',
+    },
+    {
+      title:
+        'Arreglista Musical y Productor Musical del EP "No es una Aventura" de Toño Caracoza',
+      description:
+        'El Maestro José Luis Barajas participó como Arreglista Musical y Productor Musical del EP "No es una Aventura" de Toño Caracoza.',
+      link: 'https://open.spotify.com/intl-es/artist/2cYCV8Bn8lzwCYIEEWAAxr?si=x5JOJSs3QI2UswN5C8impg',
+      image: '/gallery/tono-caracoza.webp',
+    },
+  ];
+
+  const allProjects = [...projects, ...additionalProjects];
+
+  return (
+    <section id="projects" className="py-20 bg-jazz-blue">
+      <div className="container mx-auto px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <h2 className="section-title">{t('projects.title')}</h2>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {allProjects.map((project, index) => (
+            <motion.div
+              key={index}
+              className="project-card"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -10 }}
+            >
+              <div
+                className="h-48 bg-cover bg-center flex items-end"
+                style={
+                  project.image
+                    ? {
+                        backgroundImage: `url(${project.image})`,
+                        backgroundBlendMode: 'overlay',
+                        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                      }
+                    : {
+                        background:
+                          'linear-gradient(135deg, rgba(11, 18, 32, 1) 0%, rgba(180, 145, 63, 0.35) 100%)',
+                      }
+                }
+              >
+                {!project.image && (
+                  <div className="w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
+                    <span className="text-sm uppercase tracking-[0.2em] text-jazz-gold">
+                      Featured Collaboration
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6">
+                <h3 className="text-xl font-serif font-semibold text-white mb-3">{project.title}</h3>
+                <p className="text-jazz-light mb-4">{project.description}</p>
+                <a
+                  href={project.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-jazz-gold hover:underline"
+                >
+                  {t('projects.viewProject')}
+                  <ExternalLink size={16} className="ml-1" />
+                </a>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          className="mt-16 p-8 rounded-lg gold-gradient"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          viewport={{ once: true }}
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-6 md:mb-0">
+              <h3 className="text-2xl font-serif font-bold text-white mb-2">Interested in Collaboration?</h3>
+              <p className="text-jazz-light">Let's create something beautiful together.</p>
+            </div>
+            <motion.a
+              href="https://mail.google.com/mail/?view=cm&fs=1&to=barajijazz@gmail.com&su=Collaboration%20Inquiry"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Send an email to barajijazz@gmail.com"
+              className="inline-flex items-center justify-center px-6 py-3 bg-jazz-gold text-jazz-black rounded-full font-medium hover:bg-opacity-90 transition-colors cursor-pointer"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Get in Touch
+            </motion.a>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+export default Projects;
