@@ -2,39 +2,88 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import FunnelEventTracker from "@/components/funnel/FunnelEventTracker";
 import TrackedSubmitButton from "@/components/funnel/TrackedSubmitButton";
+import { sanitizeReturnTo } from "@/lib/authRedirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
 import { buildPostUpgradeHref, type UpgradeUnlock, upgradeSuccessMessage } from "@/lib/upgrade";
 import { getStripeServer } from "@/lib/stripe";
 
+function firstQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function normalizeUnlock(value: string | undefined): UpgradeUnlock {
+  switch (value) {
+    case "ai":
+    case "strategy":
+    case "roadmap":
+    case "dashboard":
+    case "pro":
+      return value;
+    default:
+      return "pro";
+  }
+}
+
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams?: Promise<{
-    success?: string;
-    canceled?: string;
-    returnTo?: string;
-    unlock?: UpgradeUnlock;
+    success?: string | string[];
+    canceled?: string | string[];
+    returnTo?: string | string[];
+    unlock?: string | string[];
   }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const resolvedSearchParams = await searchParams;
+  const paymentSucceeded = firstQueryValue(resolvedSearchParams?.success) === "true";
+  const paymentCanceled = firstQueryValue(resolvedSearchParams?.canceled) === "true";
+  const rawReturnTo = firstQueryValue(resolvedSearchParams?.returnTo);
+  const returnTo = rawReturnTo ? sanitizeReturnTo(rawReturnTo) : null;
+  const unlock = normalizeUnlock(firstQueryValue(resolvedSearchParams?.unlock));
+  const continueHref = returnTo ? buildPostUpgradeHref(returnTo, unlock) : "/dashboard";
+  const stripeConfigured = Boolean(process.env.STRIPE_PRICE_PRO);
 
-  if (!user) {
-    redirect("/login");
+  console.log("[billing] route opened");
+  console.log("[billing] returnTo:", returnTo);
+  console.log("[billing] unlock:", unlock);
+  if (!stripeConfigured) {
+    console.log("[billing] missing config: STRIPE_PRICE_PRO");
   }
 
-  const userPlan = await getUserPlan(user.id);
-  const normalizedPlan = userPlan.trim().toLowerCase();
+  let userEmail = "";
+  let normalizedPlan = "free";
 
-  const resolvedSearchParams = await searchParams;
-  const paymentSucceeded = resolvedSearchParams?.success === "true";
-  const paymentCanceled = resolvedSearchParams?.canceled === "true";
-  const returnTo = resolvedSearchParams?.returnTo;
-  const unlock = resolvedSearchParams?.unlock ?? "pro";
-  const continueHref = returnTo ? buildPostUpgradeHref(returnTo, unlock) : "/dashboard";
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    userEmail = user.email ?? "";
+    normalizedPlan = await getUserPlan(user.id);
+  } catch (error) {
+    return (
+      <main className="min-h-screen bg-[#070A12] px-6 py-10 text-white">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-amber-500/20 bg-amber-500/10 p-6">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-100/75">
+            Billing unavailable
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold text-white">We couldn&apos;t open billing right now.</h1>
+          <p className="mt-3 text-sm leading-7 text-white/72">
+            Try again in a moment. If this continues, check that billing and auth environment settings are configured correctly.
+          </p>
+          <div className="mt-4 text-xs text-white/55">
+            {error instanceof Error ? error.message : "Unknown billing route error."}
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   async function createCheckoutSession(formData: FormData) {
     "use server";
@@ -53,8 +102,9 @@ export default async function BillingPage({
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const returnToEntry = formData.get("returnTo");
     const unlockEntry = formData.get("unlock");
-    const returnTo = typeof returnToEntry === "string" ? returnToEntry : null;
-    const unlock: UpgradeUnlock = typeof unlockEntry === "string" ? (unlockEntry as UpgradeUnlock) : "pro";
+    const returnTo =
+      typeof returnToEntry === "string" ? sanitizeReturnTo(returnToEntry) : "/dashboard";
+    const unlock = normalizeUnlock(typeof unlockEntry === "string" ? unlockEntry : undefined);
     const successPath = buildPostUpgradeHref(returnTo, unlock);
     const cancelParams = new URLSearchParams({ canceled: "true" });
 
@@ -67,6 +117,7 @@ export default async function BillingPage({
     }
 
     if (!priceId) {
+      console.log("[billing] missing config: STRIPE_PRICE_PRO");
       throw new Error("Missing STRIPE_PRICE_PRO");
     }
 
@@ -129,7 +180,7 @@ export default async function BillingPage({
           </h1>
 
           <p className="mt-3 text-sm text-white/65">
-            Logged in as <span className="font-semibold text-white">{user.email}</span>
+            Logged in as <span className="font-semibold text-white">{userEmail}</span>
           </p>
 
           <div className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -218,9 +269,6 @@ export default async function BillingPage({
                   <li>• Monthly AI strategy generations</li>
                   <li>• Personal roadmap continuity</li>
                 </ul>
-                <div className="mt-4 text-sm text-blue-100/72">
-                  A fraction of the cost of a single consultation — with continuous strategy guidance.
-                </div>
                 <div className="mt-5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/72">
                   A fraction of the cost of a single consultation - with continuous strategy guidance.
                 </div>
@@ -240,7 +288,7 @@ export default async function BillingPage({
                       </button>
                     </form>
                   </div>
-                ) : (
+                ) : stripeConfigured ? (
                   <form action={createCheckoutSession}>
                     <input type="hidden" name="returnTo" value={returnTo ?? ""} />
                     <input type="hidden" name="unlock" value={unlock} />
@@ -253,6 +301,10 @@ export default async function BillingPage({
                       Get my full roadmap
                     </TrackedSubmitButton>
                   </form>
+                ) : (
+                  <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    Billing configuration is incomplete right now. Please try again after Stripe setup is restored.
+                  </div>
                 )}
                 <div className="mt-3 text-xs text-white/72">
                   Unlock your complete PR strategy and execution plan

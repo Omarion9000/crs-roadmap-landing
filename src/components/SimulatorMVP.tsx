@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { simulate } from "@/lib/crs/api";
 import {
-  clearStoredBaseProfile,
+  clearStoredProfileState,
   getBaseProfileOwnerKey,
   persistStoredBaseProfile,
   readAnyStoredBaseProfile,
@@ -1010,10 +1010,11 @@ export default function SimulatorMVP() {
 
     if (
       rawStoredProfile &&
-      ((!baseProfileOwnerKey && rawStoredProfile.ownerKey) ||
-        (!!baseProfileOwnerKey && rawStoredProfile.ownerKey !== baseProfileOwnerKey))
+      (!baseProfileOwnerKey ||
+        !rawStoredProfile.ownerKey ||
+        rawStoredProfile.ownerKey !== baseProfileOwnerKey)
     ) {
-      clearStoredBaseProfile();
+      clearStoredProfileState();
     }
 
     if (ownerChanged) {
@@ -1028,6 +1029,7 @@ export default function SimulatorMVP() {
       setLoadedRoadmapEmail("");
       setLoadedRoadmapCreatedAt("");
       setLastSavedRoadmapSignature("");
+      setRoadmapHistory([]);
       restoredRoadmapIdRef.current = null;
     }
 

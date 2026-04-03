@@ -60,6 +60,21 @@ export function clearStoredBaseProfile() {
   }
 }
 
+export function clearStoredRoadmapState() {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(ROADMAP_STORAGE_KEY);
+  } catch {
+    // ignore client storage failures
+  }
+}
+
+export function clearStoredProfileState() {
+  clearStoredBaseProfile();
+  clearStoredRoadmapState();
+}
+
 export function readAnyStoredBaseProfile() {
   if (typeof window === "undefined") return null;
   return parseStoredBaseProfile(window.localStorage.getItem(BASE_PROFILE_STORAGE_KEY));
@@ -70,7 +85,7 @@ export function readStoredBaseProfile(ownerKey?: string | null): StoredBaseProfi
   if (!parsed) return null;
 
   if (!ownerKey) {
-    return parsed.ownerKey ? null : parsed;
+    return null;
   }
 
   return parsed.ownerKey === ownerKey ? parsed : null;
@@ -106,7 +121,7 @@ export function hasRoadmap() {
 export function persistStoredBaseProfile(payload: StoredBaseProfilePayload | null) {
   if (typeof window === "undefined") return;
 
-  if (!payload) {
+  if (!payload || !payload.ownerKey) {
     clearStoredBaseProfile();
     return;
   }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { clearStoredProfileState } from "@/lib/crs/baseProfile";
 import type { User } from "@supabase/supabase-js";
 
 export default function Header() {
@@ -68,6 +69,7 @@ export default function Header() {
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
+    clearStoredProfileState();
     router.push("/");
     router.refresh();
   };

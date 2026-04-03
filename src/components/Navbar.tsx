@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { getBaseProfileOwnerKey, readStoredBaseProfile } from "@/lib/crs/baseProfile";
+import { clearStoredProfileState, getBaseProfileOwnerKey, readStoredBaseProfile } from "@/lib/crs/baseProfile";
 import { getPreferredName } from "@/lib/personalization";
 
 export default function Navbar() {
@@ -76,6 +76,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
+    clearStoredProfileState();
     router.push("/");
     router.refresh();
   };
