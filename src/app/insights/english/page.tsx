@@ -5,7 +5,7 @@ import InsightCTAFooter from "@/components/insights/InsightCTAFooter";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
-import { buildBillingHref, buildLoginHref, upgradeSuccessMessage } from "@/lib/upgrade";
+import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 type ResourceCardProps = {
   title: string;
@@ -277,8 +277,8 @@ export default async function EnglishStrategyPage({
               compact
               title="Unlock full English execution plan"
               description="Free preview keeps the decision and impact visible. Pro unlocks the complete threshold strategy, sequencing, and study-to-score execution path."
-              primaryHref={user ? buildBillingHref({ returnTo: "/insights/english", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/english" })}
-              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/english", unlock: "strategy" })}
+              primaryLabel="Unlock full strategy"
               bullets={["Execution plan", "Sequencing", "Threshold optimization"]}
             />
           </section>
@@ -325,8 +325,8 @@ export default async function EnglishStrategyPage({
               eyebrow="Locked resources"
               title="Unlock the full English resource stack"
               description="Free preview shows the high-level opportunity. Pro unlocks the curated level-check, practice, and resource sequencing layer tied to your roadmap."
-              primaryHref={user ? buildBillingHref({ returnTo: "/insights/english", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/english" })}
-              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/english", unlock: "strategy" })}
+              primaryLabel="Unlock full strategy"
               bullets={["Curated resources", "Roadmap-aware study flow", "Deeper planning context"]}
             />
           </section>

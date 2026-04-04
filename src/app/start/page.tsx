@@ -34,9 +34,13 @@ export default function StartPage() {
       }
 
       if (!user) {
+        console.log("[start] authenticated user present:", "no");
+        console.log("[start] redirect target:", "/login?returnTo=%2Fstart");
         router.replace(buildLoginHref({ returnTo: "/start" }));
         return;
       }
+
+      console.log("[start] authenticated user present:", "yes");
 
       trackFunnelEventOnce("signup-completed", "signup_completed", {
         source: "start",
@@ -46,6 +50,7 @@ export default function StartPage() {
 
       if (!hasBaseProfile(ownerKey)) {
         setStatus("Let’s build your base profile first...");
+        console.log("[start] redirect target:", "/crs-calculator?entry=activation");
         router.replace("/crs-calculator?entry=activation");
         return;
       }
@@ -89,6 +94,7 @@ export default function StartPage() {
             roadmapsData.roadmaps.length > 0
           ) {
             setStatus("Opening your dashboard...");
+            console.log("[start] redirect target:", "/dashboard");
             router.replace("/dashboard");
             return;
           }
@@ -98,6 +104,7 @@ export default function StartPage() {
       }
 
       setStatus("Opening your simulator...");
+      console.log("[start] redirect target:", "/simulator?entry=activation");
       router.replace("/simulator?entry=activation");
     }
 

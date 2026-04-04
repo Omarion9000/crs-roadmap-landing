@@ -1,3 +1,5 @@
+export const AUTH_CALLBACK_PATH = "/auth/callback";
+
 function normalizeBaseUrl(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -51,7 +53,7 @@ export function getAuthBaseUrl(options?: { requestOrigin?: string | null }) {
 }
 
 export function getAuthRedirectUrl(
-  path = "/auth/callback",
+  path = AUTH_CALLBACK_PATH,
   options?: {
     returnTo?: string | null;
     requestOrigin?: string | null;

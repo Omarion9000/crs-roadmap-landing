@@ -46,6 +46,23 @@ export function buildLoginHref(options?: {
   return query ? `/login?${query}` : "/login";
 }
 
+export function buildUpgradeEntryHref(options?: {
+  isAuthenticated?: boolean | null;
+  returnTo?: string | null;
+  unlock?: UpgradeUnlock | null;
+}) {
+  const billingHref = buildBillingHref({
+    returnTo: options?.returnTo,
+    unlock: options?.unlock,
+  });
+
+  if (options?.isAuthenticated) {
+    return billingHref;
+  }
+
+  return buildLoginHref({ returnTo: billingHref });
+}
+
 export function buildPostUpgradeHref(
   returnTo?: string | null,
   unlock?: UpgradeUnlock | null

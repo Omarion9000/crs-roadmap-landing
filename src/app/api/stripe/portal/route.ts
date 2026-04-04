@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthBaseUrl } from "@/lib/authRedirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStripeServer } from "@/lib/stripe";
@@ -9,7 +10,7 @@ type SubscriptionRow = {
   status?: string | null;
 };
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
     const admin = createSupabaseAdminClient();
@@ -56,7 +57,7 @@ export async function POST() {
     );
 
     const stripe = getStripeServer();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getAuthBaseUrl({ requestOrigin: new URL(request.url).origin });
 
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,

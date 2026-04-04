@@ -5,7 +5,7 @@ import FrenchPlanGenerator from "@/components/insights/FrenchPlanGenerator";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
-import { buildBillingHref, buildLoginHref, upgradeSuccessMessage } from "@/lib/upgrade";
+import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 type ResourceCardProps = {
   title: string;
@@ -515,8 +515,8 @@ export default async function FrenchStrategyPage({
                 compact
                 title="Unlock your French execution plan"
                 description="Free preview keeps the strategic case visible. Pro unlocks the full execution system, timing, and roadmap-aware French sequencing."
-                primaryHref={user ? buildBillingHref({ returnTo: "/insights/french", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/french" })}
-                primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+                primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
+                primaryLabel="Unlock full strategy"
                 bullets={["Execution plan", "Timeline guidance", "Roadmap sequencing"]}
               />
             </section>
@@ -526,8 +526,8 @@ export default async function FrenchStrategyPage({
                 eyebrow="Locked resources"
                 title="Unlock the full French resource stack"
                 description="Free preview explains why French matters. Pro unlocks the curated level-check, momentum, exam-context, and roadmap-use guidance."
-                primaryHref={user ? buildBillingHref({ returnTo: "/insights/french", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/french" })}
-                primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+                primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
+                primaryLabel="Unlock full strategy"
                 bullets={["Curated tools", "Exam-context resources", "Roadmap-use guidance"]}
               />
             </section>
@@ -612,7 +612,7 @@ export default async function FrenchStrategyPage({
                 Back to simulator
               </Link>
               <Link
-                href={isPro ? "/dashboard" : !!user ? buildBillingHref({ returnTo: "/insights/french", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/french" })}
+                href={isPro ? "/dashboard" : buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
                 className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
               >
                 {isPro ? "Open dashboard" : "Unlock Pro"}

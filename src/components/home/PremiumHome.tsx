@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
 import { trackFunnelEvent } from "@/lib/funnel";
+import { buildUpgradeEntryHref } from "@/lib/upgrade";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -101,7 +102,7 @@ const pricingPlans = [
       "Premium strategy pages",
       "Monthly AI strategy generations",
     ],
-    ctaHref: "/billing",
+    ctaHref: buildUpgradeEntryHref({ returnTo: "/billing", unlock: "pro" }),
     ctaLabel: "Get my roadmap",
     className:
       "scale-[1.03] border border-blue-400/40 bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(139,92,246,0.08),rgba(255,255,255,0.04))] shadow-[0_0_40px_rgba(59,130,246,0.25)]",

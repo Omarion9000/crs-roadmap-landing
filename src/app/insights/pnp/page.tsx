@@ -5,7 +5,7 @@ import PnpPlanGenerator from "@/components/insights/PnpPlanGenerator";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
-import { buildBillingHref, buildLoginHref, upgradeSuccessMessage } from "@/lib/upgrade";
+import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 const pnpPaths = [
   {
@@ -196,8 +196,8 @@ export default async function PnpStrategyPage({
               compact
               title="Unlock full PNP pathway analysis"
               description="Free preview keeps the feasibility framing visible. Pro unlocks the deeper nomination patterns, province-fit comparison, and practical pathway guidance."
-              primaryHref={user ? buildBillingHref({ returnTo: "/insights/pnp", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/pnp" })}
-              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/pnp", unlock: "strategy" })}
+              primaryLabel="Unlock full strategy"
               bullets={["Real-world nomination patterns", "Province-fit guidance", "Deeper path analysis"]}
             />
           </section>
@@ -301,8 +301,8 @@ export default async function PnpStrategyPage({
               compact
               title="Unlock full PNP strategy"
               description="Free preview shows the decision logic, impact framing, and PNP overview. Pro unlocks deeper planning, better sequencing, and the full AI-generated strategy workflow."
-              primaryHref={user ? buildBillingHref({ returnTo: "/insights/pnp", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights/pnp" })}
-              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/pnp", unlock: "strategy" })}
+              primaryLabel="Unlock full strategy"
               bullets={[
                 "Full roadmap planning",
                 "Deeper PNP guidance",

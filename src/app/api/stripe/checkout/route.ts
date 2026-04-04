@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthBaseUrl } from "@/lib/authRedirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe";
 import { buildPostUpgradeHref, type UpgradeUnlock } from "@/lib/upgrade";
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     const priceId = process.env.STRIPE_PRICE_PRO;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getAuthBaseUrl({ requestOrigin: new URL(req.url).origin });
     const body = (await req.json().catch(() => null)) as
       | { returnTo?: string; unlock?: UpgradeUnlock }
       | null;

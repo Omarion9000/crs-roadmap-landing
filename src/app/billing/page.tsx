@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import FunnelEventTracker from "@/components/funnel/FunnelEventTracker";
 import TrackedSubmitButton from "@/components/funnel/TrackedSubmitButton";
-import { sanitizeReturnTo } from "@/lib/authRedirect";
+import { getAuthBaseUrl, sanitizeReturnTo } from "@/lib/authRedirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
-import { buildPostUpgradeHref, type UpgradeUnlock, upgradeSuccessMessage } from "@/lib/upgrade";
+import { buildBillingHref, buildLoginHref, buildPostUpgradeHref, type UpgradeUnlock, upgradeSuccessMessage } from "@/lib/upgrade";
 import { getStripeServer } from "@/lib/stripe";
 
 function firstQueryValue(value: string | string[] | undefined) {
@@ -33,11 +34,13 @@ export default async function BillingPage({
     canceled?: string | string[];
     returnTo?: string | string[];
     unlock?: string | string[];
+    billingError?: string | string[];
   }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const paymentSucceeded = firstQueryValue(resolvedSearchParams?.success) === "true";
   const paymentCanceled = firstQueryValue(resolvedSearchParams?.canceled) === "true";
+  const billingError = firstQueryValue(resolvedSearchParams?.billingError);
   const rawReturnTo = firstQueryValue(resolvedSearchParams?.returnTo);
   const returnTo = rawReturnTo ? sanitizeReturnTo(rawReturnTo) : null;
   const unlock = normalizeUnlock(firstQueryValue(resolvedSearchParams?.unlock));
@@ -45,8 +48,10 @@ export default async function BillingPage({
   const stripeConfigured = Boolean(process.env.STRIPE_PRICE_PRO);
 
   console.log("[billing] route opened");
+  console.log("[billing] authenticated:", "checking");
   console.log("[billing] returnTo:", returnTo);
   console.log("[billing] unlock:", unlock);
+  console.log("[billing] stripe config present:", stripeConfigured ? "yes" : "no");
   if (!stripeConfigured) {
     console.log("[billing] missing config: STRIPE_PRICE_PRO");
   }
@@ -61,12 +66,25 @@ export default async function BillingPage({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      redirect("/login");
+      console.log("[billing] authenticated:", "no");
+      redirect(
+        buildLoginHref({
+          returnTo: buildBillingHref({
+            returnTo,
+            unlock,
+          }),
+        })
+      );
     }
 
+    console.log("[billing] authenticated:", "yes");
     userEmail = user.email ?? "";
     normalizedPlan = await getUserPlan(user.id);
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     return (
       <main className="min-h-screen bg-[#070A12] px-6 py-10 text-white">
         <div className="mx-auto max-w-3xl rounded-3xl border border-amber-500/20 bg-amber-500/10 p-6">
@@ -88,6 +106,12 @@ export default async function BillingPage({
   async function createCheckoutSession(formData: FormData) {
     "use server";
 
+    const returnToEntry = formData.get("returnTo");
+    const unlockEntry = formData.get("unlock");
+    const actionReturnTo =
+      typeof returnToEntry === "string" ? sanitizeReturnTo(returnToEntry) : "/dashboard";
+    const actionUnlock = normalizeUnlock(typeof unlockEntry === "string" ? unlockEntry : undefined);
+
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
@@ -95,25 +119,27 @@ export default async function BillingPage({
     } = await supabase.auth.getUser();
 
     if (userError || !user || !user.email) {
-      redirect("/login");
+      redirect(
+        buildLoginHref({
+          returnTo: buildBillingHref({
+            returnTo: actionReturnTo,
+            unlock: actionUnlock,
+          }),
+        })
+      );
     }
 
     const priceId = process.env.STRIPE_PRICE_PRO;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const returnToEntry = formData.get("returnTo");
-    const unlockEntry = formData.get("unlock");
-    const returnTo =
-      typeof returnToEntry === "string" ? sanitizeReturnTo(returnToEntry) : "/dashboard";
-    const unlock = normalizeUnlock(typeof unlockEntry === "string" ? unlockEntry : undefined);
-    const successPath = buildPostUpgradeHref(returnTo, unlock);
+    const appUrl = getAuthBaseUrl();
+    const successPath = buildPostUpgradeHref(actionReturnTo, actionUnlock);
     const cancelParams = new URLSearchParams({ canceled: "true" });
 
-    if (returnTo) {
-      cancelParams.set("returnTo", returnTo);
+    if (actionReturnTo) {
+      cancelParams.set("returnTo", actionReturnTo);
     }
 
-    if (unlock) {
-      cancelParams.set("unlock", unlock);
+    if (actionUnlock) {
+      cancelParams.set("unlock", actionUnlock);
     }
 
     if (!priceId) {
@@ -121,43 +147,61 @@ export default async function BillingPage({
       throw new Error("Missing STRIPE_PRICE_PRO");
     }
 
-    const stripe = getStripeServer();
+    try {
+      const stripe = getStripeServer();
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      customer_email: user.email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${appUrl}${successPath}`,
-      cancel_url: `${appUrl}/billing?${cancelParams.toString()}`,
-      metadata: {
-        user_id: user.id,
-        email: user.email,
-        plan: "pro",
-        unlock,
-        return_to: returnTo ?? "",
-      },
-      subscription_data: {
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        customer_email: user.email,
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${appUrl}${successPath}`,
+        cancel_url: `${appUrl}/billing?${cancelParams.toString()}`,
         metadata: {
           user_id: user.id,
           email: user.email,
           plan: "pro",
-          unlock,
-          return_to: returnTo ?? "",
+          unlock: actionUnlock,
+          return_to: actionReturnTo ?? "",
         },
-      },
-    });
+        subscription_data: {
+          metadata: {
+            user_id: user.id,
+            email: user.email,
+            plan: "pro",
+            unlock: actionUnlock,
+            return_to: actionReturnTo ?? "",
+          },
+        },
+      });
 
-    if (!session.url) {
-      throw new Error("Stripe checkout session did not return a URL");
+      if (!session.url) {
+        throw new Error("Stripe checkout session did not return a URL");
+      }
+
+      redirect(session.url);
+    } catch (error) {
+      if (isRedirectError(error)) {
+        throw error;
+      }
+
+      console.log(
+        "[billing] checkout error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+
+      const retryHref = buildBillingHref({
+        returnTo: actionReturnTo,
+        unlock: actionUnlock,
+      });
+      const separator = retryHref.includes("?") ? "&" : "?";
+      redirect(`${retryHref}${separator}billingError=configuration`);
     }
-
-    redirect(session.url);
   }
 
   return (
@@ -196,6 +240,12 @@ export default async function BillingPage({
           {paymentCanceled ? (
             <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
               Checkout was canceled. You can try again anytime.
+            </div>
+          ) : null}
+
+          {billingError === "configuration" ? (
+            <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Billing is temporarily unavailable because the Stripe configuration could not be verified. Please try again shortly.
             </div>
           ) : null}
 

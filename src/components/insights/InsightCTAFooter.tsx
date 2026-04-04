@@ -32,11 +32,19 @@ export default function InsightCTAFooter({
           Back to simulator
         </Link>
         <Link
-          href={isPro ? "/dashboard" : isAuthenticated ? upgradeHref : buildLoginHref({ returnTo: "/insights" })}
+          href={
+            isPro
+              ? "/dashboard"
+              : isAuthenticated
+                ? upgradeHref
+                : buildLoginHref({ returnTo: upgradeHref })
+          }
           onClick={() => {
             if (!isPro) {
               trackFunnelEvent("locked_strategy_clicked", {
-                href: isAuthenticated ? upgradeHref : "/insights",
+                href: isAuthenticated
+                  ? upgradeHref
+                  : buildLoginHref({ returnTo: upgradeHref }),
               });
             }
           }}

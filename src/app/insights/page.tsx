@@ -4,7 +4,7 @@ import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import { strategyPageList } from "@/lib/insights/strategyPages";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
-import { buildBillingHref, buildLoginHref } from "@/lib/upgrade";
+import { buildUpgradeEntryHref } from "@/lib/upgrade";
 
 export default async function InsightsPage() {
   const supabase = await createSupabaseServerClient();
@@ -95,8 +95,8 @@ export default async function InsightsPage() {
             <PremiumLockedPanel
               title="Unlock premium strategy paths"
               description="Free users can preview the simulator and understand the value of each path. Pro unlocks the strategy library, roadmap saving, roadmap history, and the full premium workflow."
-              primaryHref={user ? buildBillingHref({ returnTo: "/insights", unlock: "strategy" }) : buildLoginHref({ returnTo: "/insights" })}
-              primaryLabel={user ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights", unlock: "strategy" })}
+              primaryLabel="Unlock full strategy"
               secondaryHref="/simulator"
               secondaryLabel="Return to simulator"
               bullets={[

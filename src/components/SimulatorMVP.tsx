@@ -26,7 +26,7 @@ import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import AIStrategyPanel from "@/components/ai/AIStrategyPanel";
 import { trackFunnelEvent, trackFunnelEventOnce } from "@/lib/funnel";
 import { buildRecommendationSummary } from "@/lib/strategy/recommendationSummary";
-import { buildBillingHref, buildLoginHref, upgradeSuccessMessage } from "@/lib/upgrade";
+import { buildBillingHref, buildLoginHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 import { greetingLabel, roadmapDisplayName } from "@/lib/personalization";
 import type { AIStrategyRecommendation } from "@/types/ai-strategy";
 
@@ -2553,7 +2553,11 @@ export default function SimulatorMVP() {
                   usage={aiUsage}
                   preview={aiPreview}
                   preferredName={preferredName}
-                  upgradeHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=ai", unlock: "ai" })}
+                  upgradeHref={buildUpgradeEntryHref({
+                    isAuthenticated: !!authUser,
+                    returnTo: "/simulator?upgradeTarget=ai",
+                    unlock: "ai",
+                  })}
                   onGenerate={handleGenerateAiStrategy}
                 />
 
@@ -2604,7 +2608,11 @@ export default function SimulatorMVP() {
                         </button>
                       ) : (
                         <Link
-                          href={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
+                          href={buildUpgradeEntryHref({
+                            isAuthenticated: !!authUser,
+                            returnTo: "/simulator?upgradeTarget=roadmap",
+                            unlock: "roadmap",
+                          })}
                           className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/15"
                         >
                           Unlock your roadmap
@@ -2701,7 +2709,11 @@ export default function SimulatorMVP() {
                         eyebrow="Roadmap saving"
                         title="Unlock your roadmap"
                         description="Free preview helps you understand your strongest next moves. Pro unlocks saved roadmaps, history, and a premium workflow you can return to."
-                        primaryHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
+                        primaryHref={buildUpgradeEntryHref({
+                          isAuthenticated: !!authUser,
+                          returnTo: "/simulator?upgradeTarget=roadmap",
+                          unlock: "roadmap",
+                        })}
                         primaryLabel="Unlock your roadmap"
                         analyticsEvent="locked_strategy_clicked"
                         bullets={[
@@ -2769,7 +2781,11 @@ export default function SimulatorMVP() {
                       eyebrow="Premium workflow"
                       title="Saved roadmaps and premium strategy live together on Pro"
                       description="Free users can see where they stand and preview their top opportunities. Pro unlocks roadmap history, premium strategy paths, and a fuller decision workflow."
-                      primaryHref={buildBillingHref({ returnTo: "/simulator?upgradeTarget=roadmap", unlock: "roadmap" })}
+                      primaryHref={buildUpgradeEntryHref({
+                        isAuthenticated: !!authUser,
+                        returnTo: "/simulator?upgradeTarget=roadmap",
+                        unlock: "roadmap",
+                      })}
                       primaryLabel="See full roadmap"
                       analyticsEvent="locked_strategy_clicked"
                       secondaryHref="/insights"
@@ -2923,7 +2939,11 @@ export default function SimulatorMVP() {
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <Link
-                          href={buildBillingHref({ returnTo: "/simulator?upgradeTarget=strategy", unlock: "strategy" })}
+                          href={buildUpgradeEntryHref({
+                            isAuthenticated: !!authUser,
+                            returnTo: "/simulator?upgradeTarget=strategy",
+                            unlock: "strategy",
+                          })}
                           className="rounded-full border border-cyan-400/20 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
                         >
                           See your full strategy

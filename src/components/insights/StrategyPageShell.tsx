@@ -4,7 +4,7 @@ import InsightHero from "@/components/insights/InsightHero";
 import InsightSection from "@/components/insights/InsightSection";
 import InsightSnapshotGrid from "@/components/insights/InsightSnapshotGrid";
 import type { StrategyPageContent } from "@/lib/insights/strategyPages";
-import { buildBillingHref, buildLoginHref } from "@/lib/upgrade";
+import { buildBillingHref, buildUpgradeEntryHref } from "@/lib/upgrade";
 
 type StrategyPageShellProps = {
   page: StrategyPageContent;
@@ -130,8 +130,12 @@ export default function StrategyPageShell({
             <PremiumLockedPanel
               title="Premium workflow locked"
               description="Free users can preview the strategy summary, why it matters, and the high-level fit. Pro unlocks the complete workflow, deeper planning, sequencing, and full roadmap integration."
-              primaryHref={isAuthenticated ? buildBillingHref({ returnTo: `/insights/${page.slug}`, unlock: "strategy" }) : buildLoginHref({ returnTo: `/insights/${page.slug}` })}
-              primaryLabel={isAuthenticated ? "Unlock full strategy" : "Continue to unlock"}
+              primaryHref={buildUpgradeEntryHref({
+                isAuthenticated,
+                returnTo: `/insights/${page.slug}`,
+                unlock: "strategy",
+              })}
+              primaryLabel="Unlock full strategy"
               secondaryHref="/simulator"
               secondaryLabel="Back to simulator"
               bullets={[

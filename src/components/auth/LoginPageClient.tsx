@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { getAuthRedirectUrl, sanitizeReturnTo } from "@/lib/authRedirect";
+import { AUTH_CALLBACK_PATH, getAuthRedirectUrl, sanitizeReturnTo } from "@/lib/authRedirect";
 import { trackFunnelEvent, trackFunnelEventOnce } from "@/lib/funnel";
 
 const accessSteps = [
@@ -12,6 +12,36 @@ const accessSteps = [
   "Build your base CRS profile",
   "Unlock your smartest next move",
 ];
+
+function formatAuthErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "We couldn’t send your secure access link right now.";
+  }
+
+  const normalized = error.message.toLowerCase();
+
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("security purposes") ||
+    normalized.includes("too many requests")
+  ) {
+    return "Too many magic-link requests in a short time. Please wait a moment before requesting another secure link.";
+  }
+
+  return error.message;
+}
+
+function getAuthCallbackMessage(authError: string | null) {
+  if (!authError) {
+    return "";
+  }
+
+  if (authError === "magic_link_failed") {
+    return "That secure link could not complete sign-in. Request a fresh magic link and open it on this device.";
+  }
+
+  return "";
+}
 
 export default function LoginPageClient() {
   const router = useRouter();
@@ -28,6 +58,12 @@ export default function LoginPageClient() {
     let mounted = true;
     const rawReturnTo = searchParams.get("returnTo");
     const returnTo = sanitizeReturnTo(rawReturnTo);
+    const authError = searchParams.get("authError");
+    const callbackErrorMessage = getAuthCallbackMessage(authError);
+
+    if (callbackErrorMessage) {
+      setError(callbackErrorMessage);
+    }
 
     function routeAuthenticatedUser() {
       trackFunnelEventOnce("signup-completed", "signup_completed", {
@@ -93,10 +129,22 @@ export default function LoginPageClient() {
       const rawReturnTo = searchParams.get("returnTo");
       const returnTo = sanitizeReturnTo(rawReturnTo);
       const emailRedirectTo = getAuthRedirectUrl("/auth/callback", { returnTo });
+      const emailRedirectUrl = new URL(emailRedirectTo);
+      const authOptionsPayload = {
+        emailRedirectTo,
+        hasEmailRedirectTo: Boolean(emailRedirectTo),
+        callbackPath: emailRedirectUrl.pathname,
+      };
 
       trackFunnelEvent("signup_started", { returnTo });
       console.log("[auth] returnTo:", returnTo);
-      console.log("[auth] magic link redirect url:", emailRedirectTo);
+      console.log("[auth] emailRedirectTo:", emailRedirectTo);
+      console.log("[auth] emailRedirectTo pathname:", emailRedirectUrl.pathname);
+      console.log(
+        "[auth] emailRedirectTo has callback path:",
+        emailRedirectUrl.pathname === AUTH_CALLBACK_PATH ? "yes" : "no"
+      );
+      console.log("[auth] signInWithOtp options:", authOptionsPayload);
 
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email: trimmedEmail,
@@ -112,9 +160,7 @@ export default function LoginPageClient() {
       setMessage("Check your inbox");
       setEmail("");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "We couldn’t send your secure access link right now."
-      );
+      setError(formatAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -282,6 +328,10 @@ export default function LoginPageClient() {
 
                 <div className="mt-4 text-xs leading-6 text-white/46">
                   Start free. Upgrade later for full roadmap, premium strategies, and saved progress.
+                </div>
+
+                <div className="mt-3 text-[11px] leading-5 text-white/38">
+                  Supabase Auth email rate limits are managed in your Supabase dashboard, not in Stripe.
                 </div>
               </div>
             </div>
