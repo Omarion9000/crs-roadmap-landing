@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { buildLoginHref } from "@/lib/upgrade";

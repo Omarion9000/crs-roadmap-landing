@@ -3,8 +3,8 @@ import Link from "next/link";
 import FunnelEventTracker from "@/components/funnel/FunnelEventTracker";
 import FrenchPlanGenerator from "@/components/insights/FrenchPlanGenerator";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/subscriptions";
+import { resolveInsightViewer } from "@/lib/insights/viewer";
+import { withName } from "@/lib/personalization";
 import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 type ResourceCardProps = {
@@ -224,27 +224,22 @@ const bestForCards = [
   "You want to build a parallel path with long-term strategic upside.",
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function FrenchStrategyPage({
   searchParams,
 }: {
   searchParams?: Promise<{ pro?: string; unlock?: string }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const userPlan = user ? await getUserPlan(user.id) : "free";
-  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
-  const isPro = normalizedPlan === "pro";
-  const profileOwnerKey = user?.id ?? null;
+  const viewer = await resolveInsightViewer("french");
   const resolvedSearchParams = await searchParams;
   const showUpgradeSuccess = resolvedSearchParams?.pro === "unlocked";
   const unlock = resolvedSearchParams?.unlock ?? "strategy";
+  console.log("[insights] server render reached:", "french");
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#070A12] px-6 py-12 text-white">
-      <div className="pointer-events-none fixed inset-0 -z-10">
+    <main className="relative min-h-screen overflow-hidden bg-[#070A12] px-6 py-12 text-white">
+      <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#08101F] via-[#070A12] to-black" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:88px_88px] opacity-[0.04]" />
         <div className="absolute left-1/2 top-[-10rem] h-[24rem] w-[56rem] -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
@@ -271,7 +266,7 @@ export default async function FrenchStrategyPage({
           </>
         ) : null}
 
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.045] p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(217,70,239,0.35)] backdrop-blur-xl sm:p-10">
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#0c1120]/92 p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(217,70,239,0.24)] supports-[backdrop-filter]:bg-white/[0.045] supports-[backdrop-filter]:backdrop-blur-md sm:p-10">
           <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-fuchsia-500/10 via-transparent to-cyan-500/10" />
           <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-fuchsia-400/10 blur-3xl" />
 
@@ -281,7 +276,7 @@ export default async function FrenchStrategyPage({
                 Premium strategy workspace
               </div>
               <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/68">
-                {isPro ? "Pro unlocked" : "Free preview"}
+                {viewer.isPro ? "Pro unlocked" : "Free preview"}
               </div>
               <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
                 Strategic unlock
@@ -292,7 +287,10 @@ export default async function FrenchStrategyPage({
               French strategy advantage
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-white/66">
-              French can be more than an incremental score gain. For the right profile, it can become one of the strongest user-controlled moves in the roadmap.
+              {withName(
+                viewer.preferredName,
+                "French can be more than an incremental score gain. For the right profile, it can become one of the strongest user-controlled moves in the roadmap."
+              )}
             </p>
             <div className="mt-6 max-w-3xl rounded-[24px] border border-white/10 bg-black/20 px-5 py-4 text-sm leading-7 text-white/74">
               This page is built to help you judge French as a strategic lever: whether it should lead now, strengthen the roadmap in parallel, or stay secondary until another move is secured.
@@ -324,7 +322,7 @@ export default async function FrenchStrategyPage({
             </div>
           </section>
 
-          <section className="rounded-[32px] border border-cyan-400/15 bg-white/[0.04] p-6 backdrop-blur-xl">
+          <section className="rounded-[32px] border border-cyan-400/15 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
               Potential impact
             </div>
@@ -373,7 +371,7 @@ export default async function FrenchStrategyPage({
           </div>
         </section>
 
-        {isPro ? (
+        {viewer.isPro ? (
           <>
         <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
           <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
@@ -515,7 +513,7 @@ export default async function FrenchStrategyPage({
                 compact
                 title="Unlock your French execution plan"
                 description="Free preview keeps the strategic case visible. Pro unlocks the full execution system, timing, and roadmap-aware French sequencing."
-                primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
+                primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/french", unlock: "strategy" })}
                 primaryLabel="Unlock full strategy"
                 bullets={["Execution plan", "Timeline guidance", "Roadmap sequencing"]}
               />
@@ -526,7 +524,7 @@ export default async function FrenchStrategyPage({
                 eyebrow="Locked resources"
                 title="Unlock the full French resource stack"
                 description="Free preview explains why French matters. Pro unlocks the curated level-check, momentum, exam-context, and roadmap-use guidance."
-                primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
+                primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/french", unlock: "strategy" })}
                 primaryLabel="Unlock full strategy"
                 bullets={["Curated tools", "Exam-context resources", "Roadmap-use guidance"]}
               />
@@ -535,12 +533,12 @@ export default async function FrenchStrategyPage({
         )}
 
         <FrenchPlanGenerator
-          userPlan={normalizedPlan}
-          profileOwnerKey={profileOwnerKey}
+          userPlan={viewer.userPlan}
+          profileOwnerKey={viewer.profileOwnerKey}
           upgradeHref={buildBillingHref({ returnTo: "/insights/french", unlock: "strategy" })}
         />
 
-        {isPro ? (
+        {viewer.isPro ? (
         <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
@@ -612,10 +610,10 @@ export default async function FrenchStrategyPage({
                 Back to simulator
               </Link>
               <Link
-                href={isPro ? "/dashboard" : buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/french", unlock: "strategy" })}
+                href={viewer.isPro ? "/dashboard" : buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/french", unlock: "strategy" })}
                 className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
               >
-                {isPro ? "Open dashboard" : "Unlock Pro"}
+                {viewer.isPro ? "Open dashboard" : "Unlock Pro"}
               </Link>
             </div>
           </div>

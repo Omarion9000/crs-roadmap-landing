@@ -23,14 +23,34 @@ export default function EnglishPlanGenerator({
 }: EnglishPlanGeneratorProps) {
   const [hasGenerated, setHasGenerated] = useState(false);
 
-  const context = useMemo(
-    () => buildEnglishStrategyContext(readStoredBaseProfile(profileOwnerKey)),
-    [profileOwnerKey]
-  );
-  const plan = useMemo(
-    () => (context ? generateEnglishStrategyPlan(context) : null),
-    [context]
-  );
+  const context = useMemo(() => {
+    try {
+      return buildEnglishStrategyContext(readStoredBaseProfile(profileOwnerKey));
+    } catch (error) {
+      console.log("[insights] route:", "english");
+      console.log("[insights] generator data safe:", "no");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] english context error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return null;
+    }
+  }, [profileOwnerKey]);
+  const plan = useMemo(() => {
+    try {
+      return context ? generateEnglishStrategyPlan(context) : null;
+    } catch (error) {
+      console.log("[insights] route:", "english");
+      console.log("[insights] strategy payload keys:", "missing");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] english plan error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return null;
+    }
+  }, [context]);
 
   const priorityTone =
     plan?.priority === "high"

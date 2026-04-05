@@ -3,8 +3,8 @@ import FunnelEventTracker from "@/components/funnel/FunnelEventTracker";
 import InsightCTAFooter from "@/components/insights/InsightCTAFooter";
 import PnpPlanGenerator from "@/components/insights/PnpPlanGenerator";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/subscriptions";
+import { resolveInsightViewer } from "@/lib/insights/viewer";
+import { withName } from "@/lib/personalization";
 import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 const pnpPaths = [
@@ -61,27 +61,36 @@ const pnpOpportunityCards = [
   },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function PnpStrategyPage({
   searchParams,
 }: {
   searchParams?: Promise<{ pro?: string; unlock?: string }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const viewer = await resolveInsightViewer("pnp");
+    const resolvedSearchParams = await searchParams;
+    const showUpgradeSuccess = resolvedSearchParams?.pro === "unlocked";
+    const unlock = resolvedSearchParams?.unlock ?? "strategy";
 
-  const userPlan = user ? await getUserPlan(user.id) : "free";
-  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
-  const isPro = normalizedPlan === "pro";
-  const profileOwnerKey = user?.id ?? null;
-  const resolvedSearchParams = await searchParams;
-  const showUpgradeSuccess = resolvedSearchParams?.pro === "unlocked";
-  const unlock = resolvedSearchParams?.unlock ?? "strategy";
+    console.log("[insights] route:", "pnp");
+    console.log("[insights] using direct generator path:", "yes");
+    console.log("[insights] profile available:", viewer.hasProfile ? "yes" : "no");
+    console.log(
+      "[insights] preferred name available:",
+      viewer.preferredName ? "yes" : "no"
+    );
+    console.log(
+      "[insights] strategy payload available:",
+      viewer.hasStrategyPayload ? "yes" : "preview"
+    );
+    console.log("[insights] fallback used:", "no");
+    console.log("[insights] server render reached:", "pnp");
 
-  return (
-    <main className="min-h-screen overflow-x-hidden bg-[#070A12] px-6 py-12 text-white">
-      <div className="pointer-events-none fixed inset-0 -z-10">
+    return (
+    <main className="relative min-h-screen overflow-hidden bg-[#070A12] px-6 py-12 text-white">
+      <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#08101F] via-[#070A12] to-black" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:88px_88px] opacity-[0.04]" />
         <div className="absolute left-1/2 top-[-10rem] h-[24rem] w-[56rem] -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
@@ -108,7 +117,7 @@ export default async function PnpStrategyPage({
           </>
         ) : null}
 
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.045] p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(217,70,239,0.35)] backdrop-blur-xl sm:p-10">
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#0c1120]/92 p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(217,70,239,0.24)] supports-[backdrop-filter]:bg-white/[0.045] supports-[backdrop-filter]:backdrop-blur-md sm:p-10">
           <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-fuchsia-500/10 via-transparent to-indigo-500/10" />
           <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-fuchsia-400/10 blur-3xl" />
 
@@ -118,7 +127,7 @@ export default async function PnpStrategyPage({
                 Premium strategy workspace
               </div>
               <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/68">
-                {isPro ? "Pro unlocked" : "Free preview"}
+                {viewer.isPro ? "Pro unlocked" : "Free preview"}
               </div>
             </div>
 
@@ -126,7 +135,10 @@ export default async function PnpStrategyPage({
               Provincial nomination strategy
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-white/66">
-              Unlock the highest-impact CRS boost and understand how nomination pathways can transform your roadmap.
+              {withName(
+                viewer.preferredName,
+                "unlock the highest-impact CRS boost and understand how nomination pathways can transform your roadmap."
+              )}
             </p>
             <div className="mt-6 max-w-3xl text-sm leading-7 text-white/78">
               A provincial nomination can add a significant boost to your CRS and change your position in Express Entry draws.
@@ -150,7 +162,7 @@ export default async function PnpStrategyPage({
             </p>
           </section>
 
-          <section className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+          <section className="rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
               Potential impact
             </div>
@@ -163,13 +175,13 @@ export default async function PnpStrategyPage({
         </div>
 
         <PnpPlanGenerator
-          userPlan={normalizedPlan}
-          profileOwnerKey={profileOwnerKey}
+          userPlan={viewer.userPlan}
+          profileOwnerKey={viewer.profileOwnerKey}
           upgradeHref={buildBillingHref({ returnTo: "/insights/pnp", unlock: "strategy" })}
         />
 
-        {isPro ? (
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        {viewer.isPro ? (
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
             How people actually get nominated
           </div>
@@ -196,7 +208,7 @@ export default async function PnpStrategyPage({
               compact
               title="Unlock full PNP pathway analysis"
               description="Free preview keeps the feasibility framing visible. Pro unlocks the deeper nomination patterns, province-fit comparison, and practical pathway guidance."
-              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/pnp", unlock: "strategy" })}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/pnp", unlock: "strategy" })}
               primaryLabel="Unlock full strategy"
               bullets={["Real-world nomination patterns", "Province-fit guidance", "Deeper path analysis"]}
             />
@@ -215,8 +227,8 @@ export default async function PnpStrategyPage({
           </div>
         </section>
 
-        {isPro ? (
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        {viewer.isPro ? (
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
             Where PNP can work for you
           </div>
@@ -284,7 +296,7 @@ export default async function PnpStrategyPage({
             </div>
           </div>
 
-          {isPro ? (
+          {viewer.isPro ? (
             <div className="rounded-[32px] border border-emerald-500/20 bg-emerald-500/10 p-6 shadow-[0_24px_80px_-56px_rgba(16,185,129,0.45)]">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
                 Pro access
@@ -301,7 +313,7 @@ export default async function PnpStrategyPage({
               compact
               title="Unlock full PNP strategy"
               description="Free preview shows the decision logic, impact framing, and PNP overview. Pro unlocks deeper planning, better sequencing, and the full AI-generated strategy workflow."
-              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/pnp", unlock: "strategy" })}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/pnp", unlock: "strategy" })}
               primaryLabel="Unlock full strategy"
               bullets={[
                 "Full roadmap planning",
@@ -312,8 +324,8 @@ export default async function PnpStrategyPage({
           )}
         </section>
 
-        {isPro ? (
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        {viewer.isPro ? (
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
@@ -348,11 +360,20 @@ export default async function PnpStrategyPage({
         ) : null}
 
         <InsightCTAFooter
-          isPro={isPro}
-          isAuthenticated={!!user}
+          isPro={viewer.isPro}
+          isAuthenticated={viewer.isAuthenticated}
           upgradeHref={buildBillingHref({ returnTo: "/insights/pnp", unlock: "strategy" })}
         />
       </div>
     </main>
   );
+  } catch (error) {
+    console.log("[insights] route:", "pnp");
+    console.log("[insights] fallback used:", "yes");
+    console.log(
+      "[insights] pnp route error:",
+      error instanceof Error ? error.message : "unknown"
+    );
+    throw error;
+  }
 }

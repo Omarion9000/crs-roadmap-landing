@@ -3,6 +3,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -292,8 +293,9 @@ function GlassPanel({
   return (
     <div
       className={[
-        "relative overflow-hidden border border-white/10 bg-white/[0.045] backdrop-blur-xl",
-        "shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_28px_90px_-58px_rgba(99,102,241,0.45)]",
+        "relative overflow-hidden border border-white/10 bg-[#0c1120]/92",
+        "supports-[backdrop-filter]:bg-white/[0.045] supports-[backdrop-filter]:backdrop-blur-md",
+        "shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_72px_-52px_rgba(99,102,241,0.34)]",
         className,
       ].join(" ")}
     >
@@ -614,9 +616,9 @@ function ScenarioOpportunityCardInner({
       whileHover={{ y: topTier ? -4 : -3, scale: topTier ? 1.005 : 1.003 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className={[
-        "group relative overflow-hidden border bg-white/[0.03] p-5 transition duration-300",
+        "group relative overflow-hidden border bg-[#0c1120]/95 p-5 transition duration-300",
         topTier ? "rounded-[30px]" : "rounded-[28px]",
-        "hover:border-white/20 hover:bg-white/[0.05]",
+        "hover:border-white/20 hover:bg-[#121a2d]",
         cardModel.accent.ring,
         cardModel.accent.shadow,
       ].join(" ")}
@@ -634,18 +636,12 @@ function ScenarioOpportunityCardInner({
           <div className="flex min-w-0 items-start gap-4">
             {topTier ? (
               cardModel.scenarioImage ? (
-                <motion.div
-                  className="relative mt-1 flex h-[88px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded-[28px]"
-                  whileHover={{ y: -2, scale: 1.03 }}
-                  transition={{ duration: 0.28, ease: "easeOut" }}
-                >
-                  <motion.div
+                <div className="relative mt-1 flex h-[88px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded-[28px]">
+                  <div
                     className={[
-                      "absolute inset-0 rounded-[28px] bg-linear-to-br blur-xl",
+                      "absolute inset-0 rounded-[28px] bg-linear-to-br opacity-70",
                       cardModel.gradientClass ?? "",
                     ].join(" ")}
-                    animate={{ opacity: [0.32, 0.48, 0.32], scale: [1, 1.03, 1] }}
-                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
                   />
                   <div
                     className={[
@@ -653,57 +649,21 @@ function ScenarioOpportunityCardInner({
                       cardModel.gradientClass ?? "",
                     ].join(" ")}
                   />
-                  <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-white/[0.04] backdrop-blur-sm transition group-hover:border-white/20" />
-                  <motion.div
-                    className="absolute z-0 h-[56px] w-[56px] rounded-full bg-white/12 blur-2xl"
-                    animate={{ scale: [1, 1.12, 1], opacity: [0.18, 0.34, 0.18] }}
-                    transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <motion.div
-                    className="absolute z-0 h-[42px] w-[42px] rounded-full bg-white/10 blur-lg"
-                    animate={{ scale: [1, 1.08, 1], opacity: [0.22, 0.42, 0.22] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.25 }}
-                  />
-                  <motion.div
-                    className="absolute z-0 h-[24px] w-[24px] rounded-full bg-white/16 blur-md"
-                    animate={{ scale: [1, 1.18, 1], opacity: [0.22, 0.5, 0.22] }}
-                    transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
-                  />
-                  <div className="absolute inset-0 overflow-hidden rounded-[28px]">
-                    {[0, 1, 2, 3].map((i) => (
-                      <motion.span
-                        key={i}
-                        className={["absolute rounded-full", cardModel.particleClass ?? ""].join(" ")}
-                        style={{
-                          width: i % 2 === 0 ? 3 : 2,
-                          height: i % 2 === 0 ? 3 : 2,
-                          left: `${20 + i * 14}%`,
-                          top: `${20 + (i % 3) * 18}%`,
-                          boxShadow: "0 0 10px rgba(255,255,255,0.24)",
-                        }}
-                        animate={{ y: [0, -4, 0], opacity: [0.08, 0.24, 0.08], scale: [1, 1.08, 1] }}
-                        transition={{
-                          duration: 2.8 + i * 0.35,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.2,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <motion.img
+                  <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-black/10" />
+                  <div className="absolute z-0 h-[40px] w-[40px] rounded-full bg-white/8 blur-md" />
+                  <Image
                     src={cardModel.scenarioImage}
                     alt=""
+                    width={72}
+                    height={72}
                     className="relative z-20 h-[72px] w-[72px] object-contain drop-shadow-[0_0_28px_rgba(255,255,255,0.32)]"
-                    animate={{ y: [0, -2, 0], scale: [1, 1.025, 1] }}
-                    transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
                   />
-                </motion.div>
+                </div>
               ) : (
-                <div className="relative mt-1 h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/30 p-2 backdrop-blur">
+                <div className="relative mt-1 h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/30 p-2">
                   <div className={["absolute inset-2 rounded-xl opacity-90", cardModel.accent.artA].join(" ")} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-black/20 backdrop-blur">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-black/20">
                       <div className={["absolute h-6 w-6 rounded-lg opacity-90", cardModel.accent.artB].join(" ")} />
                       <span className="relative text-[11px] font-bold tracking-[0.18em] text-black/80">
                         {cardModel.artLabel}
@@ -731,7 +691,7 @@ function ScenarioOpportunityCardInner({
           </div>
 
           <div className={topTier ? "shrink-0" : undefined}>
-            <div className={["border border-white/10 bg-black/25 text-right backdrop-blur", topTier ? "rounded-[22px] px-5 py-4" : "rounded-[20px] px-4 py-3"].join(" ")}>
+            <div className={["border border-white/10 bg-black/25 text-right", topTier ? "rounded-[22px] px-5 py-4" : "rounded-[20px] px-4 py-3"].join(" ")}>
               <div className={[topTier ? "text-[11px] tracking-[0.2em]" : "text-[10px] tracking-[0.18em]", "font-semibold uppercase text-white/45"].join(" ")}>
                 Estimated gain
               </div>
@@ -833,11 +793,11 @@ function OpportunitySkeletonCard({ topTier = false }: { topTier?: boolean }) {
   return (
     <div
       className={[
-        "relative overflow-hidden border border-white/10 bg-white/[0.03] p-5",
+        "relative overflow-hidden border border-white/10 bg-[#0c1120]/95 p-5",
         topTier ? "rounded-[30px]" : "rounded-[28px]",
       ].join(" ")}
     >
-      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/[0.05] to-transparent animate-[pulse_2.6s_ease-in-out_infinite]" />
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/[0.03] to-transparent" />
       <div className="relative z-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">
@@ -2189,14 +2149,14 @@ export default function SimulatorMVP() {
     }
   }
 
+  const hasServerRoadmapContinuity = !!authUser && userPlan === "pro" && roadmapHistory.length > 0;
+
   return (
-    <div className="min-h-[calc(100vh-0px)] bg-[#070A12] text-white">
+    <div className="relative min-h-[calc(100vh-0px)] overflow-hidden bg-[#070A12] text-white">
       {/* background */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
+      <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#070A12] via-[#070A12] to-black" />
-        <div className="absolute -top-48 left-1/2 h-112 w-130 -translate-x-1/2 rounded-full bg-indigo-500/15 blur-3xl" />
-        <div className="absolute -bottom-48 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute -right-40 top-56 h-104 w-104 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.16),transparent_42%),radial-gradient(circle_at_18%_78%,rgba(59,130,246,0.12),transparent_34%),radial-gradient(circle_at_85%_42%,rgba(139,92,246,0.12),transparent_32%)]" />
       </div>
 
       <main className="mx-auto max-w-screen-2xl px-6 py-8 lg:px-12 2xl:px-16">
@@ -2223,7 +2183,7 @@ export default function SimulatorMVP() {
           </GlassPanel>
         </MotionReveal>
 
-        {baseProfileReady && !storedProfile ? (
+        {baseProfileReady && !storedProfile && !hasServerRoadmapContinuity ? (
           <MotionReveal delay={0.08}>
             <GlassPanel className="rounded-[32px]">
               <div className="max-w-2xl p-6">
@@ -2248,6 +2208,42 @@ export default function SimulatorMVP() {
                   Free preview active
                 </span>
               </div>
+              </div>
+            </GlassPanel>
+          </MotionReveal>
+        ) : null}
+
+        {baseProfileReady && !storedProfile && hasServerRoadmapContinuity ? (
+          <MotionReveal delay={0.08}>
+            <GlassPanel className="rounded-[32px]">
+              <div className="max-w-2xl p-6">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                  Returning roadmap continuity
+                </div>
+                <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                  Your saved roadmap history is ready to restore.
+                </div>
+                <div className="mt-4 text-sm leading-7 text-white/68">
+                  Open your dashboard or restore a saved roadmap below to bring your latest profile and AI layer back into the simulator.
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/dashboard"
+                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                  >
+                    Open dashboard
+                  </Link>
+                  <Link
+                    href={
+                      roadmapHistory[0]
+                        ? `/simulator?roadmapId=${encodeURIComponent(roadmapHistory[0].id)}&restore=1`
+                        : "/dashboard"
+                    }
+                    className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Restore latest roadmap
+                  </Link>
+                </div>
               </div>
             </GlassPanel>
           </MotionReveal>
@@ -2818,7 +2814,7 @@ export default function SimulatorMVP() {
                   </div>
                 </div>
                 {isRefreshing ? (
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/72 backdrop-blur">
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/72">
                     Updating strategy...
                   </div>
                 ) : null}

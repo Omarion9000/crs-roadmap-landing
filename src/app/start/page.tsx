@@ -47,17 +47,12 @@ export default function StartPage() {
       });
 
       const ownerKey = getBaseProfileOwnerKey(user);
-
-      if (!hasBaseProfile(ownerKey)) {
-        setStatus("Let’s build your base profile first...");
-        console.log("[start] redirect target:", "/crs-calculator?entry=activation");
-        router.replace("/crs-calculator?entry=activation");
-        return;
-      }
+      const hasLocalBaseProfile = hasBaseProfile(ownerKey);
 
       setStatus("Checking your roadmap continuity...");
 
       let normalizedPlan: "free" | "pro" = "free";
+      let savedRoadmapCount = 0;
 
       try {
         const subscriptionResponse = await fetch("/api/subscription", {
@@ -90,22 +85,40 @@ export default function StartPage() {
             roadmapsResponse.ok &&
             roadmapsData &&
             "ok" in roadmapsData &&
-            roadmapsData.ok === true &&
-            roadmapsData.roadmaps.length > 0
+            roadmapsData.ok === true
           ) {
-            setStatus("Opening your dashboard...");
-            console.log("[start] redirect target:", "/dashboard");
-            router.replace("/dashboard");
-            return;
+            savedRoadmapCount = roadmapsData.roadmaps.length;
           }
         } catch {
           // fall back to simulator
         }
       }
 
-      setStatus("Opening your simulator...");
-      console.log("[start] redirect target:", "/simulator?entry=activation");
-      router.replace("/simulator?entry=activation");
+      const hasSavedRoadmapContinuity =
+        normalizedPlan === "pro" && savedRoadmapCount > 0;
+      const continuityFound = hasSavedRoadmapContinuity || hasLocalBaseProfile;
+
+      console.log("[start] pro status:", normalizedPlan);
+      console.log("[start] saved roadmap count:", savedRoadmapCount);
+      console.log("[start] continuity found:", continuityFound ? "yes" : "no");
+
+      if (hasSavedRoadmapContinuity) {
+        setStatus("Opening your dashboard...");
+        console.log("[start] redirect target:", "/dashboard");
+        router.replace("/dashboard");
+        return;
+      }
+
+      if (hasLocalBaseProfile) {
+        setStatus("Opening your simulator...");
+        console.log("[start] redirect target:", "/simulator?entry=activation");
+        router.replace("/simulator?entry=activation");
+        return;
+      }
+
+      setStatus("Let’s build your base profile first...");
+      console.log("[start] redirect target:", "/crs-calculator?entry=activation");
+      router.replace("/crs-calculator?entry=activation");
     }
 
     void routeIntoProduct();

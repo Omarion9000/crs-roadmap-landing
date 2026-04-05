@@ -1,10 +1,10 @@
 import Image from "next/image";
-import EnglishPlanGenerator from "@/components/insights/EnglishPlanGenerator";
 import FunnelEventTracker from "@/components/funnel/FunnelEventTracker";
+import EnglishPlanGenerator from "@/components/insights/EnglishPlanGenerator";
 import InsightCTAFooter from "@/components/insights/InsightCTAFooter";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/subscriptions";
+import { resolveInsightViewer } from "@/lib/insights/viewer";
+import { withName } from "@/lib/personalization";
 import { buildBillingHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 
 type ResourceCardProps = {
@@ -126,27 +126,36 @@ const actionSteps = [
   "Take timed mock tests",
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function EnglishStrategyPage({
   searchParams,
 }: {
   searchParams?: Promise<{ pro?: string; unlock?: string }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const viewer = await resolveInsightViewer("english");
+    const resolvedSearchParams = await searchParams;
+    const showUpgradeSuccess = resolvedSearchParams?.pro === "unlocked";
+    const unlock = resolvedSearchParams?.unlock ?? "strategy";
 
-  const userPlan = user ? await getUserPlan(user.id) : "free";
-  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
-  const isPro = normalizedPlan === "pro";
-  const profileOwnerKey = user?.id ?? null;
-  const resolvedSearchParams = await searchParams;
-  const showUpgradeSuccess = resolvedSearchParams?.pro === "unlocked";
-  const unlock = resolvedSearchParams?.unlock ?? "strategy";
+    console.log("[insights] route:", "english");
+    console.log("[insights] using direct generator path:", "yes");
+    console.log("[insights] profile available:", viewer.hasProfile ? "yes" : "no");
+    console.log(
+      "[insights] preferred name available:",
+      viewer.preferredName ? "yes" : "no"
+    );
+    console.log(
+      "[insights] strategy payload available:",
+      viewer.hasStrategyPayload ? "yes" : "preview"
+    );
+    console.log("[insights] fallback used:", "no");
+    console.log("[insights] server render reached:", "english");
 
-  return (
-    <main className="min-h-screen overflow-x-hidden bg-[#070A12] px-6 py-12 text-white">
-      <div className="pointer-events-none fixed inset-0 -z-10">
+    return (
+    <main className="relative min-h-screen overflow-hidden bg-[#070A12] px-6 py-12 text-white">
+      <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#08101F] via-[#070A12] to-black" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:88px_88px] opacity-[0.04]" />
         <div className="absolute left-1/2 top-[-10rem] h-[24rem] w-[56rem] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
@@ -173,7 +182,7 @@ export default async function EnglishStrategyPage({
           </>
         ) : null}
 
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.045] p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(34,211,238,0.35)] backdrop-blur-xl sm:p-10">
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#0c1120]/92 p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(34,211,238,0.24)] supports-[backdrop-filter]:bg-white/[0.045] supports-[backdrop-filter]:backdrop-blur-md sm:p-10">
           <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-cyan-500/10 via-transparent to-indigo-500/10" />
           <div className="pointer-events-none absolute -top-20 right-0 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
 
@@ -183,7 +192,7 @@ export default async function EnglishStrategyPage({
                 Premium strategy workspace
               </div>
               <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/68">
-                {isPro ? "Pro unlocked" : "Free preview"}
+                {viewer.isPro ? "Pro unlocked" : "Free preview"}
               </div>
             </div>
 
@@ -191,7 +200,10 @@ export default async function EnglishStrategyPage({
               English score optimization
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-white/66">
-              Use English improvement strategically to unlock faster CRS gains, stronger competitiveness, and better roadmap sequencing.
+              {withName(
+                viewer.preferredName,
+                "use English improvement strategically to unlock faster CRS gains, stronger competitiveness, and better roadmap sequencing."
+              )}
             </p>
           </div>
         </section>
@@ -212,7 +224,7 @@ export default async function EnglishStrategyPage({
             </p>
           </section>
 
-          <section className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+          <section className="rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
               Potential impact
             </div>
@@ -231,8 +243,8 @@ export default async function EnglishStrategyPage({
           </section>
         </div>
 
-        {isPro ? (
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        {viewer.isPro ? (
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
@@ -277,15 +289,15 @@ export default async function EnglishStrategyPage({
               compact
               title="Unlock full English execution plan"
               description="Free preview keeps the decision and impact visible. Pro unlocks the complete threshold strategy, sequencing, and study-to-score execution path."
-              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/english", unlock: "strategy" })}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/english", unlock: "strategy" })}
               primaryLabel="Unlock full strategy"
               bullets={["Execution plan", "Sequencing", "Threshold optimization"]}
             />
           </section>
         )}
 
-        {isPro ? (
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        {viewer.isPro ? (
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
             Start here
           </div>
@@ -325,7 +337,7 @@ export default async function EnglishStrategyPage({
               eyebrow="Locked resources"
               title="Unlock the full English resource stack"
               description="Free preview shows the high-level opportunity. Pro unlocks the curated level-check, practice, and resource sequencing layer tied to your roadmap."
-              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights/english", unlock: "strategy" })}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights/english", unlock: "strategy" })}
               primaryLabel="Unlock full strategy"
               bullets={["Curated resources", "Roadmap-aware study flow", "Deeper planning context"]}
             />
@@ -333,12 +345,12 @@ export default async function EnglishStrategyPage({
         )}
 
         <EnglishPlanGenerator
-          userPlan={normalizedPlan}
-          profileOwnerKey={profileOwnerKey}
+          userPlan={viewer.userPlan}
+          profileOwnerKey={viewer.profileOwnerKey}
           upgradeHref={buildBillingHref({ returnTo: "/insights/english", unlock: "strategy" })}
         />
 
-        <section className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
+        <section className="mt-8 rounded-[32px] border border-white/10 bg-[#0c1120]/90 p-6 supports-[backdrop-filter]:bg-white/[0.04] supports-[backdrop-filter]:backdrop-blur-md">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
@@ -370,11 +382,20 @@ export default async function EnglishStrategyPage({
         </section>
 
         <InsightCTAFooter
-          isPro={isPro}
-          isAuthenticated={!!user}
+          isPro={viewer.isPro}
+          isAuthenticated={viewer.isAuthenticated}
           upgradeHref={buildBillingHref({ returnTo: "/insights/english", unlock: "strategy" })}
         />
       </div>
     </main>
   );
+  } catch (error) {
+    console.log("[insights] route:", "english");
+    console.log("[insights] fallback used:", "yes");
+    console.log(
+      "[insights] english route error:",
+      error instanceof Error ? error.message : "unknown"
+    );
+    throw error;
+  }
 }

@@ -25,22 +25,60 @@ export default function PnpPlanGenerator({
 }: PnpPlanGeneratorProps) {
   const [hasGenerated, setHasGenerated] = useState(false);
 
-  const context = useMemo(
-    () => buildPnpStrategyContext(readStoredBaseProfile(profileOwnerKey)),
-    [profileOwnerKey]
-  );
-  const plan = useMemo(
-    () => (context ? generatePnpStrategyPlan(context) : null),
-    [context]
-  );
-  const feasibility = useMemo(
-    () => (context ? getPnpFeasibility(context) : null),
-    [context]
-  );
-  const chanceLevers = useMemo(
-    () => (context ? getPnpChanceLevers(context) : []),
-    [context]
-  );
+  const context = useMemo(() => {
+    try {
+      return buildPnpStrategyContext(readStoredBaseProfile(profileOwnerKey));
+    } catch (error) {
+      console.log("[insights] route:", "pnp");
+      console.log("[insights] generator data safe:", "no");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] pnp context error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return null;
+    }
+  }, [profileOwnerKey]);
+  const plan = useMemo(() => {
+    try {
+      return context ? generatePnpStrategyPlan(context) : null;
+    } catch (error) {
+      console.log("[insights] route:", "pnp");
+      console.log("[insights] strategy payload keys:", "missing");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] pnp plan error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return null;
+    }
+  }, [context]);
+  const feasibility = useMemo(() => {
+    try {
+      return context ? getPnpFeasibility(context) : null;
+    } catch (error) {
+      console.log("[insights] route:", "pnp");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] pnp feasibility error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return null;
+    }
+  }, [context]);
+  const chanceLevers = useMemo(() => {
+    try {
+      return context ? getPnpChanceLevers(context) : [];
+    } catch (error) {
+      console.log("[insights] route:", "pnp");
+      console.log("[insights] missing field fallback used:", "yes");
+      console.log(
+        "[insights] pnp lever error:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return [];
+    }
+  }, [context]);
 
   const priorityTone =
     plan?.priority === "high"

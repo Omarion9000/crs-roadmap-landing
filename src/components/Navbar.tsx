@@ -7,12 +7,23 @@ import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { clearStoredProfileState, getBaseProfileOwnerKey, readStoredBaseProfile } from "@/lib/crs/baseProfile";
-import { getPreferredName } from "@/lib/personalization";
+import { getPreferredName, normalizePreferredName } from "@/lib/personalization";
+
+type AuthMeResponse =
+  | { ok: true; user: { id: string; email: string; preferred_name?: string } }
+  | { ok?: false; error?: string };
+
+type RemoteIdentity = {
+  id: string;
+  email: string;
+};
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [remotePreferredName, setRemotePreferredName] = useState<string | null>(null);
+  const [remoteIdentity, setRemoteIdentity] = useState<RemoteIdentity | null>(null);
   const [uiLang, setUiLang] = useState<"en" | "es">(() => {
     if (typeof window === "undefined") {
       return "en";
@@ -31,6 +42,14 @@ export default function Navbar() {
     let mounted = true;
 
     const loadUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (mounted && session?.user) {
+        setUser(session.user);
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -56,10 +75,93 @@ export default function Navbar() {
     };
   }, []);
 
+  const metadataPreferredName = useMemo(() => {
+    if (!user) {
+      return null;
+    }
+
+    if (typeof user.user_metadata?.preferred_name === "string") {
+      return normalizePreferredName(user.user_metadata.preferred_name);
+    }
+
+    if (typeof user.user_metadata?.name === "string") {
+      return normalizePreferredName(user.user_metadata.name);
+    }
+
+    return null;
+  }, [user]);
+
+  const isAuthenticated = !!user || !!remoteIdentity;
+
   const preferredName = useMemo(() => {
-    const ownerKey = getBaseProfileOwnerKey(user);
+    const ownerKey =
+      getBaseProfileOwnerKey(user) ??
+      (remoteIdentity?.id ? remoteIdentity.id : null);
     const stored = readStoredBaseProfile(ownerKey);
-    return getPreferredName(stored);
+    return (
+      getPreferredName(stored) ??
+      normalizePreferredName(remotePreferredName) ??
+      metadataPreferredName
+    );
+  }, [metadataPreferredName, remoteIdentity, remotePreferredName, user]);
+
+  const identityLabel = useMemo(() => {
+    if (!isAuthenticated) {
+      return null;
+    }
+
+    return preferredName ?? "Account";
+  }, [isAuthenticated, preferredName]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPreferredName() {
+      if (!user) {
+        if (mounted) {
+          setRemotePreferredName(null);
+          setRemoteIdentity(null);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch("/auth/me", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const data = (await response.json().catch(() => null)) as AuthMeResponse | null;
+
+        if (!mounted) {
+          return;
+        }
+
+        if (response.ok && data && "ok" in data && data.ok === true) {
+          setRemoteIdentity({
+            id: data.user.id,
+            email: data.user.email,
+          });
+          setRemotePreferredName(normalizePreferredName(data.user.preferred_name));
+          return;
+        }
+
+        setRemoteIdentity(null);
+        setRemotePreferredName((current) => current);
+      } catch {
+        if (mounted) {
+          setRemoteIdentity(null);
+          setRemotePreferredName((current) => current);
+        }
+      }
+    }
+
+    void loadPreferredName();
+
+    return () => {
+      mounted = false;
+    };
   }, [user]);
 
   const setLanguage = (nextLang: "en" | "es") => {
@@ -122,7 +224,7 @@ export default function Navbar() {
               Simulator
             </Link>
 
-            {user ? (
+            {isAuthenticated ? (
               <Link
                 href="/dashboard"
                 className={`rounded-xl px-4 py-2 text-sm transition ${
@@ -167,7 +269,7 @@ export default function Navbar() {
               </button>
             </div>
 
-            {user && preferredName ? (
+            {isAuthenticated && identityLabel ? (
               <div className="ml-2 flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-medium text-white shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_40px_-28px_rgba(59,130,246,0.45)] backdrop-blur-xl">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-300/20 bg-black/25 text-blue-100/90">
                   <svg
@@ -182,11 +284,11 @@ export default function Navbar() {
                     />
                   </svg>
                 </span>
-                <span className="tracking-[0.02em] text-white/92">{preferredName}</span>
+                <span className="tracking-[0.02em] text-white/92">{identityLabel}</span>
               </div>
             ) : null}
 
-            {!user ? (
+            {!isAuthenticated ? (
               <Link
                 href="/login"
                 className="ml-2 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300 shadow-[0_16px_32px_-24px_rgba(34,197,94,0.5)] transition hover:bg-green-500/20 hover:text-white"

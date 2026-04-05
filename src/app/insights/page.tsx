@@ -2,19 +2,14 @@ import Link from "next/link";
 import InsightNavCard from "@/components/insights/InsightNavCard";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import { strategyPageList } from "@/lib/insights/strategyPages";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/subscriptions";
+import { resolveInsightViewer } from "@/lib/insights/viewer";
 import { buildUpgradeEntryHref } from "@/lib/upgrade";
 
-export default async function InsightsPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export const dynamic = "force-dynamic";
 
-  const userPlan = user ? await getUserPlan(user.id) : "free";
-  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
-  const isPro = normalizedPlan === "pro";
+export default async function InsightsPage() {
+  const viewer = await resolveInsightViewer("library");
+  const isPro = viewer.isPro;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#070A12] px-6 py-12 text-white">
@@ -95,7 +90,7 @@ export default async function InsightsPage() {
             <PremiumLockedPanel
               title="Unlock premium strategy paths"
               description="Free users can preview the simulator and understand the value of each path. Pro unlocks the strategy library, roadmap saving, roadmap history, and the full premium workflow."
-              primaryHref={buildUpgradeEntryHref({ isAuthenticated: !!user, returnTo: "/insights", unlock: "strategy" })}
+              primaryHref={buildUpgradeEntryHref({ isAuthenticated: viewer.isAuthenticated, returnTo: "/insights", unlock: "strategy" })}
               primaryLabel="Unlock full strategy"
               secondaryHref="/simulator"
               secondaryLabel="Return to simulator"

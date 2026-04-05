@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import StrategyPageShell from "@/components/insights/StrategyPageShell";
 import { strategyPages, strategyPageList, type StrategySlug } from "@/lib/insights/strategyPages";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/subscriptions";
+import { resolveInsightViewer } from "@/lib/insights/viewer";
 
 export function generateStaticParams() {
   return strategyPageList.map((page) => ({ slug: page.slug }));
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function InsightPlaceholderPage({
   params,
@@ -20,19 +21,13 @@ export default async function InsightPlaceholderPage({
     notFound();
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const userPlan = user ? await getUserPlan(user.id) : "free";
-  const normalizedPlan = userPlan.trim().toLowerCase() === "pro" ? "pro" : "free";
+  const viewer = await resolveInsightViewer(`slug:${slug}`);
 
   return (
     <StrategyPageShell
       page={page}
-      userPlan={normalizedPlan}
-      isAuthenticated={!!user}
+      userPlan={viewer.userPlan}
+      isAuthenticated={viewer.isAuthenticated}
     />
   );
 }
