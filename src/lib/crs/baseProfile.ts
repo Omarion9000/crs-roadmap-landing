@@ -1,5 +1,6 @@
 export const BASE_PROFILE_STORAGE_KEY = "crs_base_profile";
 export const ROADMAP_STORAGE_KEY = "crs_roadmap";
+export const PROFILE_STATE_EVENT = "crs-profile-state-changed";
 
 export type StoredBaseProfilePayload = {
   createdAt: string;
@@ -22,6 +23,26 @@ export type StoredBaseProfilePayload = {
     rawForm?: unknown;
   };
 };
+
+function dispatchProfileStateChange(payload: StoredBaseProfilePayload | null) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent(PROFILE_STATE_EVENT, {
+        detail: {
+          ownerKey: payload?.ownerKey ?? null,
+          preferredName:
+            typeof payload?.baseProfile?.preferred_name === "string"
+              ? payload.baseProfile.preferred_name
+              : null,
+        },
+      })
+    );
+  } catch {
+    // ignore client event failures
+  }
+}
 
 export function getBaseProfileOwnerKey(
   user: { id?: string | null; email?: string | null } | null | undefined
@@ -55,6 +76,7 @@ export function clearStoredBaseProfile() {
 
   try {
     window.localStorage.removeItem(BASE_PROFILE_STORAGE_KEY);
+    dispatchProfileStateChange(null);
   } catch {
     // ignore client storage failures
   }
@@ -128,6 +150,7 @@ export function persistStoredBaseProfile(payload: StoredBaseProfilePayload | nul
 
   try {
     window.localStorage.setItem(BASE_PROFILE_STORAGE_KEY, JSON.stringify(payload));
+    dispatchProfileStateChange(payload);
   } catch {
     // ignore client storage failures
   }

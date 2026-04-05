@@ -293,9 +293,8 @@ function GlassPanel({
   return (
     <div
       className={[
-        "relative overflow-hidden border border-white/10 bg-[#0c1120]/92",
-        "supports-[backdrop-filter]:bg-white/[0.045] supports-[backdrop-filter]:backdrop-blur-md",
-        "shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_72px_-52px_rgba(99,102,241,0.34)]",
+        "relative overflow-hidden border border-white/10 bg-[#0c1120]/96",
+        "shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_18px_48px_-42px_rgba(99,102,241,0.26)]",
         className,
       ].join(" ")}
     >
@@ -2426,7 +2425,7 @@ export default function SimulatorMVP() {
 
         {/* MAIN GRID */}
         <motion.div
-          className="grid gap-8 lg:grid-cols-[420px_1fr]"
+          className="grid items-start gap-8 lg:grid-cols-[420px_1fr]"
           initial="hidden"
           animate="visible"
           variants={staggerShell}
@@ -2434,9 +2433,9 @@ export default function SimulatorMVP() {
           {/* LEFT: Profile + simulation controls */}
           <motion.div
             variants={fadeUp}
-            className="group lg:sticky lg:top-24 lg:h-fit"
+            className="group self-start lg:sticky lg:top-28"
           >
-          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 hover:bg-white/[0.055] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_26px_72px_-42px_rgba(99,102,241,0.55)]">
+          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             <ProfileSummaryPanel
               profileSummaryItems={profileSummaryItems}
               availableOpportunities={availableOpportunities}
@@ -2456,7 +2455,7 @@ export default function SimulatorMVP() {
 
           {/* RIGHT: Results */}
           <motion.div variants={fadeUp}>
-          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 hover:bg-white/[0.055] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_26px_72px_-42px_rgba(99,102,241,0.55)]">
+          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-white">Your best improvement plan</div>
@@ -2890,26 +2889,93 @@ export default function SimulatorMVP() {
 
               {selectedOpportunityIds.length === 0 && extraVisibleTop.length > 0 ? (
                 <div className="mt-5">
-                  {userPlan === "pro" ? (
-                    <>
+                  <div className="rounded-[28px] border border-white/10 bg-[#0c1120]/95 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                          Explore additional paths
+                        </div>
+                        <div className="mt-3 text-xl font-semibold text-white">
+                          Go beyond the top 3 winners
+                        </div>
+                        <div className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                          Secondary opportunities like CEC and other roadmap paths still matter. Review them here without losing the focus on your strongest top recommendations.
+                        </div>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => setShowAllScenarios((v) => !v)}
                         className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
                       >
-                        {showAllScenarios ? "Hide extra opportunities" : "Show more opportunities"}
+                        {showAllScenarios ? "Hide additional paths" : "Explore additional paths"}
                       </button>
+                    </div>
 
-                      <AnimatePresence initial={false}>
-                      {showAllScenarios ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {extraVisibleTop
+                        .slice(0, Math.min(extraVisibleTop.length, 3))
+                        .map((scenario) => (
+                          <button
+                            key={scenario.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedOpportunityIds((prev) =>
+                                prev.includes(scenario.id) ? prev : [...prev, scenario.id]
+                              );
+                            }}
+                            className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.05]"
+                          >
+                            <div className="text-sm font-semibold text-white">{scenario.title}</div>
+                            <div className="mt-2 text-xs leading-5 text-white/60">
+                              {scenarioNoteText(scenario.title)}
+                            </div>
+                            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70">
+                              +{scenario.delta} CRS
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+
+                    {userPlan !== "pro" ? (
+                      <div className="mt-5 rounded-[24px] border border-cyan-400/20 bg-cyan-400/10 p-4 shadow-[0_16px_40px_-32px_rgba(34,211,238,0.28)]">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                          Unlock your roadmap
+                        </div>
+                        <div className="mt-3 text-xl font-semibold text-white">
+                          See your full strategy beyond the first preview.
+                        </div>
+                        <div className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                          Free preview shows your strongest opportunities first. Upgrade to compare the remaining paths, unlock premium strategy guidance, and save your roadmap.
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <Link
+                            href={buildUpgradeEntryHref({
+                              isAuthenticated: !!authUser,
+                              returnTo: "/simulator?upgradeTarget=strategy",
+                              unlock: "strategy",
+                            })}
+                            className="rounded-full border border-cyan-400/20 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                          >
+                            See your full strategy
+                          </Link>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/65">
+                            Free preview active
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <AnimatePresence initial={false}>
+                      {showAllScenarios && extraVisibleTop.length > 3 ? (
                         <motion.div
                           className="mt-4 grid gap-4"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                         >
-                          {extraVisibleTop.map((scenario) => (
+                          {extraVisibleTop.slice(3).map((scenario) => (
                             <ScenarioOpportunityCard
                               key={scenario.id}
                               scenario={scenario}
@@ -2920,36 +2986,8 @@ export default function SimulatorMVP() {
                           ))}
                         </motion.div>
                       ) : null}
-                      </AnimatePresence>
-                    </>
-                  ) : (
-                    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5 shadow-[0_18px_48px_-34px_rgba(34,211,238,0.35)]">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                        Unlock your roadmap
-                      </div>
-                      <div className="mt-3 text-xl font-semibold text-white">
-                        See your full strategy beyond the first preview.
-                      </div>
-                      <div className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-                        Free preview shows your strongest opportunities first. Upgrade to compare the remaining paths, unlock premium strategy guidance, and save your roadmap.
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <Link
-                          href={buildUpgradeEntryHref({
-                            isAuthenticated: !!authUser,
-                            returnTo: "/simulator?upgradeTarget=strategy",
-                            unlock: "strategy",
-                          })}
-                          className="rounded-full border border-cyan-400/20 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
-                        >
-                          See your full strategy
-                        </Link>
-                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/65">
-                          Free preview active
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               ) : null}
             </div>

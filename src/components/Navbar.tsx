@@ -6,7 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { clearStoredProfileState, getBaseProfileOwnerKey, readStoredBaseProfile } from "@/lib/crs/baseProfile";
+import {
+  clearStoredProfileState,
+  getBaseProfileOwnerKey,
+  PROFILE_STATE_EVENT,
+  readStoredBaseProfile,
+} from "@/lib/crs/baseProfile";
 import { getPreferredName, normalizePreferredName } from "@/lib/personalization";
 
 type AuthMeResponse =
@@ -18,10 +23,13 @@ type RemoteIdentity = {
   email: string;
 };
 
+const REMOTE_NAME_CACHE_KEY = "crs_remote_preferred_name";
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [profileStateVersion, setProfileStateVersion] = useState(0);
   const [remotePreferredName, setRemotePreferredName] = useState<string | null>(null);
   const [remoteIdentity, setRemoteIdentity] = useState<RemoteIdentity | null>(null);
   const [uiLang, setUiLang] = useState<"en" | "es">(() => {
@@ -48,6 +56,10 @@ export default function Navbar() {
 
       if (mounted && session?.user) {
         setUser(session.user);
+        setRemoteIdentity({
+          id: session.user.id,
+          email: session.user.email ?? "",
+        });
       }
 
       const {
@@ -56,6 +68,14 @@ export default function Navbar() {
 
       if (mounted) {
         setUser(user);
+        setRemoteIdentity(
+          user
+            ? {
+                id: user.id,
+                email: user.email ?? "",
+              }
+            : null
+        );
       }
     };
 
@@ -92,18 +112,59 @@ export default function Navbar() {
   }, [user]);
 
   const isAuthenticated = !!user || !!remoteIdentity;
+  const identityOwnerKey = getBaseProfileOwnerKey(user) ?? remoteIdentity?.id ?? null;
+
+  useEffect(() => {
+    const syncProfileName = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent &&
+        event.detail &&
+        typeof event.detail === "object"
+          ? event.detail
+          : null;
+
+      if (!detail || detail.ownerKey !== identityOwnerKey) {
+        return;
+      }
+
+      setProfileStateVersion((version) => version + 1);
+    };
+
+    window.addEventListener(PROFILE_STATE_EVENT, syncProfileName);
+
+    return () => {
+      window.removeEventListener(PROFILE_STATE_EVENT, syncProfileName);
+    };
+  }, [identityOwnerKey]);
+
+  const cachedRemotePreferredName = useMemo(() => {
+    if (!identityOwnerKey || typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      const raw = window.sessionStorage.getItem(`${REMOTE_NAME_CACHE_KEY}:${identityOwnerKey}`);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as { preferredName?: string | null } | null;
+      return normalizePreferredName(parsed?.preferredName);
+    } catch {
+      return null;
+    }
+  }, [identityOwnerKey]);
 
   const preferredName = useMemo(() => {
-    const ownerKey =
-      getBaseProfileOwnerKey(user) ??
-      (remoteIdentity?.id ? remoteIdentity.id : null);
-    const stored = readStoredBaseProfile(ownerKey);
+    void profileStateVersion;
+    const localPreferredName = getPreferredName(readStoredBaseProfile(identityOwnerKey));
     return (
-      getPreferredName(stored) ??
+      localPreferredName ??
       normalizePreferredName(remotePreferredName) ??
+      cachedRemotePreferredName ??
       metadataPreferredName
     );
-  }, [metadataPreferredName, remoteIdentity, remotePreferredName, user]);
+  }, [cachedRemotePreferredName, identityOwnerKey, metadataPreferredName, profileStateVersion, remotePreferredName]);
 
   const identityLabel = useMemo(() => {
     if (!isAuthenticated) {
@@ -139,6 +200,17 @@ export default function Navbar() {
         }
 
         if (response.ok && data && "ok" in data && data.ok === true) {
+          try {
+            window.sessionStorage.setItem(
+              `${REMOTE_NAME_CACHE_KEY}:${data.user.id}`,
+              JSON.stringify({
+                preferredName: normalizePreferredName(data.user.preferred_name),
+              })
+            );
+          } catch {
+            // ignore cache persistence failures
+          }
+
           setRemoteIdentity({
             id: data.user.id,
             email: data.user.email,
@@ -151,7 +223,6 @@ export default function Navbar() {
         setRemotePreferredName((current) => current);
       } catch {
         if (mounted) {
-          setRemoteIdentity(null);
           setRemotePreferredName((current) => current);
         }
       }
