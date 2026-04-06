@@ -649,13 +649,18 @@ export default function AIStrategyPanel({
                 {recommendation.confidence} confidence
               </span>
             </div>
-            <div className="mt-3 text-sm leading-6 text-emerald-50/88">
+          <div className="mt-3 text-sm leading-6 text-emerald-50/88">
               {advisorLine(
                 preferredName,
                 "based on your current profile, your strongest realistic next move is this one.",
                 "Based on your current profile, your strongest realistic next move is this one."
               )}
             </div>
+            {recommendation.impact_summary ? (
+              <div className="mt-4 rounded-[18px] border border-cyan-400/15 bg-cyan-400/10 px-4 py-3 text-sm leading-6 text-cyan-50/88">
+                {recommendation.impact_summary}
+              </div>
+            ) : null}
             <div className="mt-3 text-2xl font-semibold text-white">{recommendation.best_strategy}</div>
             <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
               What I’d prioritize for you

@@ -259,6 +259,14 @@ export function buildStrategyContext(
     french_threshold_signal: frenchThresholdSignal(profile.frenchClb),
     profile_signals: buildProfileSignals(profile, input?.profile, programTarget, recommendationSummary),
     program_eligibility_signals: expressEntryEligibilitySignals(eligibility),
+    program_eligibility: eligibility.map((item) => ({
+      id: item.id,
+      label: item.label,
+      status: item.status,
+      summary: item.summary,
+      unmet_requirements: item.unmetRequirements,
+      support_level: item.supportLevel,
+    })),
     profile: {
       current_crs: simulation.baseCrs,
       english_clb: profile.ieltsClb,

@@ -37,6 +37,15 @@ export type StrategyContextProfile = {
   profile_mode_label?: string;
 };
 
+export type StrategyContextProgramEligibility = {
+  id: "cec" | "fsw" | "fst";
+  label: string;
+  status: "eligible" | "not_eligible" | "needs_review";
+  summary: string;
+  unmet_requirements: string[];
+  support_level?: "high" | "medium" | "low";
+};
+
 export type AIStrategyContext = {
   current_crs: number;
   program_target: string;
@@ -52,6 +61,7 @@ export type AIStrategyContext = {
   french_threshold_signal?: string;
   profile_signals?: string[];
   program_eligibility_signals?: string[];
+  program_eligibility?: StrategyContextProgramEligibility[];
   profile: StrategyContextProfile;
   latest_saved_roadmap_at?: string;
 };
