@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import type {
+  ExpressEntryEligibilityItem,
+  ExpressEntryEligibilityStatus,
+} from "@/lib/expressEntryEligibility";
 
 type ProfileSummaryItem = {
   label: string;
@@ -16,6 +20,7 @@ type OpportunityItem = {
 
 type ProfileSummaryPanelProps = {
   profileSummaryItems: ProfileSummaryItem[];
+  expressEntryEligibility: ExpressEntryEligibilityItem[];
   availableOpportunities: OpportunityItem[];
   scenarioToggles: Record<string, boolean>;
   activeToggleCount: number;
@@ -23,8 +28,31 @@ type ProfileSummaryPanelProps = {
   onClearPreviews: () => void;
 };
 
+function statusClasses(status: ExpressEntryEligibilityStatus) {
+  switch (status) {
+    case "eligible":
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
+    case "needs_review":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+    default:
+      return "border-white/10 bg-white/5 text-white/75";
+  }
+}
+
+function statusLabel(status: ExpressEntryEligibilityStatus) {
+  switch (status) {
+    case "eligible":
+      return "Likely eligible";
+    case "needs_review":
+      return "Needs review";
+    default:
+      return "Not currently eligible";
+  }
+}
+
 export default function ProfileSummaryPanel({
   profileSummaryItems,
+  expressEntryEligibility,
   availableOpportunities,
   scenarioToggles,
   activeToggleCount,
@@ -61,6 +89,55 @@ export default function ProfileSummaryPanel({
               <div className="mt-2 text-sm font-semibold text-white">{item.value}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="rounded-[28px] border border-white/10 bg-black/20 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+            Express Entry eligibility
+          </div>
+          <div className="mt-2 text-lg font-semibold text-white">
+            Your eligible Express Entry programs
+          </div>
+          <div className="mt-1 text-xs text-white/55">
+            Based on your current profile, this is a product guidance layer for CEC, FSW, and FST. Review official IRCC requirements before making final decisions.
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {expressEntryEligibility.map((program) => {
+            const blocker = program.unmetRequirements[0] ?? program.reasons[0] ?? "";
+
+            return (
+              <div
+                key={program.id}
+                className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{program.label}</div>
+                    <div className="mt-1 text-xs leading-5 text-white/62">
+                      {program.summary}
+                    </div>
+                  </div>
+
+                  <span
+                    className={[
+                      "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                      statusClasses(program.status),
+                    ].join(" ")}
+                  >
+                    {statusLabel(program.status)}
+                  </span>
+                </div>
+
+                {blocker ? (
+                  <div className="mt-3 text-xs leading-5 text-white/54">{blocker}</div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -1,6 +1,10 @@
 import { buildProfile } from "@/lib/crs/profile";
 import type { ProfileDraft, ProgramKey } from "@/lib/crs/types";
 import { simulateTop } from "@/lib/crs/optimize";
+import {
+  buildExpressEntryEligibility,
+  expressEntryEligibilitySignals,
+} from "@/lib/expressEntryEligibility";
 import { buildRecommendationSummary } from "@/lib/strategy/recommendationSummary";
 import type { AIStrategyContext, StrategyContextScenario } from "@/types/ai-strategy";
 
@@ -227,6 +231,16 @@ export function buildStrategyContext(
     rawForm: input?.profile?.rawForm ?? snapshot?.rawForm ?? null,
     programTarget,
   });
+  const eligibility = buildExpressEntryEligibility({
+    currentCrs: simulation.baseCrs,
+    englishClb: profile.ieltsClb,
+    frenchClb: profile.frenchClb,
+    canadianExperienceYears: profile.canExpYears,
+    educationLabel: input?.profile?.educationLabel ?? snapshot?.educationLabel,
+    foreignExperienceLabel:
+      input?.profile?.foreignExperienceLabel ?? snapshot?.foreignExperienceLabel,
+    rawForm: input?.profile?.rawForm ?? snapshot?.rawForm ?? null,
+  });
 
   return {
     current_crs: simulation.baseCrs,
@@ -244,6 +258,7 @@ export function buildStrategyContext(
     english_threshold_signal: englishThresholdSignal(profile.ieltsClb),
     french_threshold_signal: frenchThresholdSignal(profile.frenchClb),
     profile_signals: buildProfileSignals(profile, input?.profile, programTarget, recommendationSummary),
+    program_eligibility_signals: expressEntryEligibilitySignals(eligibility),
     profile: {
       current_crs: simulation.baseCrs,
       english_clb: profile.ieltsClb,

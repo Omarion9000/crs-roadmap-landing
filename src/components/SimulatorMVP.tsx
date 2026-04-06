@@ -25,6 +25,7 @@ import MarketOverview from "@/components/simulator/MarketOverview";
 import ProfileSummaryPanel from "@/components/simulator/ProfileSummaryPanel";
 import PremiumLockedPanel from "@/components/premium/PremiumLockedPanel";
 import AIStrategyPanel from "@/components/ai/AIStrategyPanel";
+import { buildExpressEntryEligibility } from "@/lib/expressEntryEligibility";
 import { trackFunnelEvent, trackFunnelEventOnce } from "@/lib/funnel";
 import { buildRecommendationSummary } from "@/lib/strategy/recommendationSummary";
 import { buildBillingHref, buildLoginHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
@@ -1607,6 +1608,31 @@ export default function SimulatorMVP() {
     ]
   );
 
+  const expressEntryEligibility = useMemo(
+    () =>
+      buildExpressEntryEligibility({
+        currentCrs: storedProfile?.baseProfile.currentCrs ?? profile.baseCrs,
+        englishClb: profile.ieltsClb,
+        frenchClb: profile.frenchClb,
+        canadianExperienceYears: profile.canExpYears,
+        educationLabel: storedProfile?.baseProfile.educationLabel,
+        foreignExperienceLabel: storedProfile?.baseProfile.foreignExperienceLabel,
+        rawForm: isRecord(storedProfile?.baseProfile.rawForm)
+          ? storedProfile.baseProfile.rawForm
+          : null,
+      }),
+    [
+      profile.baseCrs,
+      profile.canExpYears,
+      profile.frenchClb,
+      profile.ieltsClb,
+      storedProfile?.baseProfile.currentCrs,
+      storedProfile?.baseProfile.educationLabel,
+      storedProfile?.baseProfile.foreignExperienceLabel,
+      storedProfile?.baseProfile.rawForm,
+    ]
+  );
+
   const aiPreview = useMemo(() => {
     const bestMove =
       recommendationSummary.bestRealisticPath ?? recommendationSummary.highestUpsidePath ?? null;
@@ -2446,6 +2472,7 @@ export default function SimulatorMVP() {
               <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
                 <ProfileSummaryPanel
                   profileSummaryItems={profileSummaryItems}
+                  expressEntryEligibility={expressEntryEligibility}
                   availableOpportunities={availableOpportunities}
                   scenarioToggles={selectedOpportunityLookup}
                   activeToggleCount={activeToggleCount}

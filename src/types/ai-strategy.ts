@@ -51,6 +51,7 @@ export type AIStrategyContext = {
   english_threshold_signal?: string;
   french_threshold_signal?: string;
   profile_signals?: string[];
+  program_eligibility_signals?: string[];
   profile: StrategyContextProfile;
   latest_saved_roadmap_at?: string;
 };
