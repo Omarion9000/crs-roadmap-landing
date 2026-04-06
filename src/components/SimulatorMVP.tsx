@@ -2136,7 +2136,9 @@ export default function SimulatorMVP() {
         }
 
         if (code === "openai_request_failed" || code === "missing_api_key") {
-          throw new Error("The AI service is unavailable right now. Please try again.");
+          throw new Error(
+            "We couldn’t generate your strategy right now. Your roadmap is still available below. Try again in a few seconds."
+          );
         }
 
         if (code === "ai_parse_failed") {
@@ -2155,7 +2157,7 @@ export default function SimulatorMVP() {
       setAiStrategyError(
         error instanceof Error
           ? error.message
-          : "We couldn’t generate your AI strategy right now. Please try again."
+          : "We couldn’t generate your strategy right now. Your roadmap is still available below. Try again in a few seconds."
       );
       setAiStrategyState("error");
     }

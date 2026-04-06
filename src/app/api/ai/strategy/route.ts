@@ -343,6 +343,16 @@ export async function POST(req: Request) {
       rawOutput = response.output_text;
     } catch (error) {
       console.error("[ai strategy] OpenAI request failed:", error);
+
+      if (error instanceof Error && error.message === "Missing OPENAI_API_KEY") {
+        console.error("[ai strategy] missing OpenAI configuration: OPENAI_API_KEY");
+        return jsonError(
+          500,
+          "We couldn’t generate your strategy right now. Your roadmap is still available below. Try again in a few seconds.",
+          "missing_api_key"
+        );
+      }
+
       return jsonError(500, "AI request failed", "openai_request_failed");
     }
 
@@ -416,7 +426,12 @@ export async function POST(req: Request) {
     console.error("[ai strategy] fatal error:", error);
 
     if (error instanceof Error && error.message === "Missing OPENAI_API_KEY") {
-      return jsonError(500, "AI request failed", "missing_api_key");
+      console.error("[ai strategy] missing OpenAI configuration: OPENAI_API_KEY");
+      return jsonError(
+        500,
+        "We couldn’t generate your strategy right now. Your roadmap is still available below. Try again in a few seconds.",
+        "missing_api_key"
+      );
     }
 
     return jsonError(500, "Failed to generate AI strategy", "internal_error");
