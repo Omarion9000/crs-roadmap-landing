@@ -1,166 +1,101 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { getBaseProfileOwnerKey, hasBaseProfile } from "@/lib/crs/baseProfile";
-import { trackFunnelEventOnce } from "@/lib/funnel";
-import { buildLoginHref } from "@/lib/upgrade";
-
-type SubscriptionResponse = {
-  plan?: string;
-};
-
-type RoadmapListResponse =
-  | { ok: true; roadmaps: Array<{ id: string }> }
-  | { ok?: false; error?: string };
+import Link from "next/link";
 
 export default function StartPage() {
-  const router = useRouter();
-  const [status, setStatus] = useState("Opening your roadmap...");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function routeIntoProduct() {
-      const supabase = createSupabaseBrowserClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (cancelled) {
-        return;
-      }
-
-      if (!user) {
-        console.log("[start] authenticated user present:", "no");
-        console.log("[start] redirect target:", "/login?returnTo=%2Fstart");
-        router.replace(buildLoginHref({ returnTo: "/start" }));
-        return;
-      }
-
-      console.log("[start] authenticated user present:", "yes");
-
-      trackFunnelEventOnce("signup-completed", "signup_completed", {
-        source: "start",
-      });
-
-      const ownerKey = getBaseProfileOwnerKey(user);
-      const hasLocalBaseProfile = hasBaseProfile(ownerKey);
-
-      setStatus("Checking your roadmap continuity...");
-
-      let normalizedPlan: "free" | "pro" = "free";
-      let savedRoadmapCount = 0;
-
-      try {
-        const subscriptionResponse = await fetch("/api/subscription", {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (subscriptionResponse.ok) {
-          const subscriptionData =
-            (await subscriptionResponse.json()) as SubscriptionResponse;
-          normalizedPlan = subscriptionData.plan === "pro" ? "pro" : "free";
-        }
-      } catch {
-        normalizedPlan = "free";
-      }
-
-      if (normalizedPlan === "pro") {
-        try {
-          const roadmapsResponse = await fetch("/api/roadmaps/list", {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-          });
-
-          const roadmapsData =
-            (await roadmapsResponse.json().catch(() => null)) as RoadmapListResponse | null;
-
-          if (
-            roadmapsResponse.ok &&
-            roadmapsData &&
-            "ok" in roadmapsData &&
-            roadmapsData.ok === true
-          ) {
-            savedRoadmapCount = roadmapsData.roadmaps.length;
-          }
-        } catch {
-          // fall back to simulator
-        }
-      }
-
-      const hasSavedRoadmapContinuity =
-        normalizedPlan === "pro" && savedRoadmapCount > 0;
-      const continuityFound = hasSavedRoadmapContinuity || hasLocalBaseProfile;
-
-      console.log("[start] pro status:", normalizedPlan);
-      console.log("[start] saved roadmap count:", savedRoadmapCount);
-      console.log("[start] continuity found:", continuityFound ? "yes" : "no");
-
-      if (hasSavedRoadmapContinuity) {
-        setStatus("Opening your dashboard...");
-        console.log("[start] redirect target:", "/dashboard");
-        router.replace("/dashboard");
-        return;
-      }
-
-      if (hasLocalBaseProfile) {
-        setStatus("Opening your simulator...");
-        console.log("[start] redirect target:", "/simulator?entry=activation");
-        router.replace("/simulator?entry=activation");
-        return;
-      }
-
-      setStatus("Let’s build your base profile first...");
-      console.log("[start] redirect target:", "/crs-calculator?entry=activation");
-      router.replace("/crs-calculator?entry=activation");
-    }
-
-    void routeIntoProduct();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
   return (
-    <main className="min-h-screen overflow-hidden bg-[#070A12] text-white">
+    <main className="min-h-screen bg-[#070A12] text-white">
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-linear-to-b from-[#08101F] via-[#070A12] to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(99,102,241,0.10),transparent_22%),radial-gradient(circle_at_20%_80%,rgba(56,189,248,0.08),transparent_22%)]" />
+        <div className="absolute inset-0 bg-linear-to-b from-[#0B1020] via-[#070A12] to-black" />
+        <div className="absolute -top-40 left-1/2 h-80 w-240 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute top-40 -right-32 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
-      <div className="mx-auto flex min-h-[calc(100vh-96px)] max-w-3xl items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full rounded-[32px] border border-white/10 bg-white/[0.05] p-8 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_36px_120px_-72px_rgba(59,130,246,0.4)] backdrop-blur-xl"
-        >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-            Activation
+      <section className="mx-auto max-w-6xl px-6 py-14">
+        <div className="mb-10">
+          <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/80">
+            CRS Roadmap
           </div>
-          <div className="mt-4 text-3xl font-semibold tracking-tight text-white">
-            Opening your roadmap
+
+          <h1 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
+            Start the right way
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-base leading-7 text-white/65">
+            Choose the path that matches your situation. If you already know your
+            CRS score, go straight to strategy mode. If not, we’ll help you
+            calculate it step by step first.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-[28px] border border-white/10 bg-linear-to-b from-white/8 to-white/4 p-8 shadow-2xl shadow-black/20">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/70">
+              Option 1
+            </div>
+
+            <h2 className="mt-4 text-2xl font-semibold text-white">
+              I already know my CRS score
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/60">
+              Go directly into the simulator and compare improvement scenarios
+              based on your current CRS score.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm text-white/70">
+              <li>• Faster path for informed users</li>
+              <li>• Compare strategies immediately</li>
+              <li>• Focus on the best next move</li>
+            </ul>
+
+            <div className="mt-8">
+              <Link
+                href="/simulator"
+                className="inline-flex items-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                Continue to simulator
+              </Link>
+            </div>
           </div>
-          <div className="mt-3 text-sm leading-7 text-white/62">
-            {status}
+
+          <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-8 shadow-2xl shadow-black/20">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+              Option 2
+            </div>
+
+            <h2 className="mt-4 text-2xl font-semibold text-white">
+              I don’t know my CRS score yet
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/70">
+              Use the guided calculator first. We’ll walk you through the CRS
+              factors and then you can use that result in your roadmap.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm text-white/75">
+              <li>• Better for first-time users</li>
+              <li>• Guided step-by-step flow</li>
+              <li>• Helps avoid mistakes and confusion</li>
+            </ul>
+
+            <div className="mt-8">
+              <Link
+                href="/crs-calculator"
+                className="inline-flex items-center rounded-2xl border border-white/15 bg-[#070A12] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Calculate my CRS first
+              </Link>
+            </div>
           </div>
-          <div className="mx-auto mt-6 h-2 w-40 overflow-hidden rounded-full border border-white/10 bg-black/25">
-            <motion.div
-              className="h-full rounded-full bg-linear-to-r from-cyan-400 via-blue-400 to-violet-400"
-              animate={{ x: ["-30%", "130%"] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-              style={{ width: "45%" }}
-            />
-          </div>
-        </motion.div>
-      </div>
+        </div>
+
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
+          Not sure which option to choose? Start with{" "}
+          <span className="font-semibold text-white">
+            “I don’t know my CRS score yet”
+          </span>
+          .
+        </div>
+      </section>
     </main>
   );
 }
