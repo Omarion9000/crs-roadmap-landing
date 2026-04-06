@@ -213,6 +213,17 @@ function ActionCard({ index, step }: { index: number; step: string }) {
   );
 }
 
+function CompactProgramStrip({ summary }: { summary: string }) {
+  return (
+    <div className="rounded-[18px] border border-cyan-400/15 bg-cyan-400/10 px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/75">
+        Federal baseline
+      </div>
+      <div className="mt-2 text-sm leading-6 text-cyan-50/90">{summary}</div>
+    </div>
+  );
+}
+
 function AccordionSection({
   title,
   children,
@@ -635,10 +646,10 @@ export default function AIStrategyPanel({
           transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
           className="relative z-10 mt-4 space-y-4"
         >
-          <div className="rounded-[26px] border border-emerald-500/20 bg-emerald-500/10 p-5">
+          <div className="rounded-[28px] border border-emerald-500/20 bg-linear-to-br from-emerald-500/12 via-black/10 to-cyan-500/8 p-5 shadow-[0_18px_48px_-28px_rgba(16,185,129,0.32)]">
             <div className="flex flex-wrap items-center gap-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
-                Best realistic path right now
+                Your strongest path right now
               </div>
               <span
                 className={[
@@ -649,43 +660,35 @@ export default function AIStrategyPanel({
                 {recommendation.confidence} confidence
               </span>
             </div>
-          <div className="mt-3 text-sm leading-6 text-emerald-50/88">
+            <div className="mt-3 text-sm leading-6 text-emerald-50/88">
               {advisorLine(
                 preferredName,
-                "based on your current profile, your strongest realistic next move is this one.",
-                "Based on your current profile, your strongest realistic next move is this one."
+                "for your current profile, this is the clearest high-impact move.",
+                "For your current profile, this is the clearest high-impact move."
               )}
             </div>
             {recommendation.impact_summary ? (
-              <div className="mt-4 rounded-[18px] border border-cyan-400/15 bg-cyan-400/10 px-4 py-3 text-sm leading-6 text-cyan-50/88">
-                {recommendation.impact_summary}
+              <div className="mt-4">
+                <CompactProgramStrip summary={recommendation.impact_summary} />
               </div>
             ) : null}
-            <div className="mt-3 text-2xl font-semibold text-white">{recommendation.best_strategy}</div>
+            <div className="mt-4 text-2xl font-semibold text-white">{recommendation.best_strategy}</div>
             <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
-              What I’d prioritize for you
+              Why this wins
             </div>
-            <div className="mt-2 text-sm leading-6 text-white/74">{recommendation.reason}</div>
+            <div className="mt-2 max-w-3xl text-sm leading-6 text-white/74">{recommendation.reason}</div>
           </div>
 
           {weeklyActions.length > 0 ? (
             <div>
               <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                What to do first
+                What to do this week
               </div>
               <div className="grid gap-3 lg:grid-cols-2">
                 {weeklyActions.map((step, index) => (
                   <ActionCard key={`${index}-${step}`} index={index} step={step} />
                 ))}
               </div>
-            </div>
-          ) : null}
-
-          {primaryResources.length > 0 ? (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {primaryResources.map((resource) => (
-                <ResourceLink key={`${resource.href}-${resource.label}`} resource={resource} label={resource.label} />
-              ))}
             </div>
           ) : null}
 
@@ -706,12 +709,34 @@ export default function AIStrategyPanel({
               </div>
             </AccordionSection>
 
-            {officialResources.length > 2 ? (
-              <AccordionSection title="Explore official resources">
+            {recommendation.alternatives.length > 0 ? (
+              <AccordionSection title="Alternative paths">
                 <div className="grid gap-3 lg:grid-cols-2">
-                  {officialResources.map((resource) => (
-                    <ResourceLink key={resource.href} resource={resource} />
+                  {recommendation.alternatives.map((alternative) => (
+                    <div
+                      key={alternative.name}
+                      className="rounded-[20px] border border-white/10 bg-white/[0.035] p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="text-base font-semibold text-white">{alternative.name}</div>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/58">
+                          Secondary path
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-cyan-100">{alternative.impact}</div>
+                      <div className="mt-3 text-sm leading-6 text-white/68">
+                        {alternative.tradeoff}
+                      </div>
+                    </div>
                   ))}
+                </div>
+              </AccordionSection>
+            ) : null}
+
+            {recommendation.caution ? (
+              <AccordionSection title="Important note">
+                <div className="rounded-[20px] border border-amber-400/20 bg-amber-400/8 p-4 text-sm leading-6 text-amber-50/90">
+                  {recommendation.caution}
                 </div>
               </AccordionSection>
             ) : null}
@@ -735,29 +760,24 @@ export default function AIStrategyPanel({
               </AccordionSection>
             ) : null}
 
-            {recommendation.alternatives.length > 0 ? (
-              <AccordionSection title="Compare alternative paths">
+            {primaryResources.length > 0 || officialResources.length > 2 ? (
+              <AccordionSection title="Official resources">
                 <div className="grid gap-3 lg:grid-cols-2">
-                  {recommendation.alternatives.map((alternative) => (
-                    <div
-                      key={alternative.name}
-                      className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4"
-                    >
-                      <div className="text-base font-semibold text-white">{alternative.name}</div>
-                      <div className="mt-2 text-sm text-cyan-100">{alternative.impact}</div>
-                      <div className="mt-3 text-sm leading-6 text-white/68">
-                        {alternative.tradeoff}
-                      </div>
-                    </div>
+                  {primaryResources.map((resource) => (
+                    <ResourceLink
+                      key={`${resource.href}-${resource.label}`}
+                      resource={resource}
+                      label={resource.label}
+                    />
                   ))}
-                </div>
-              </AccordionSection>
-            ) : null}
-
-            {recommendation.caution ? (
-              <AccordionSection title="Important note">
-                <div className="rounded-[20px] border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-                  {recommendation.caution}
+                  {officialResources
+                    .filter(
+                      (resource) =>
+                        !primaryResources.some((primary) => primary.href === resource.href)
+                    )
+                    .map((resource) => (
+                      <ResourceLink key={resource.href} resource={resource} />
+                    ))}
                 </div>
               </AccordionSection>
             ) : null}
