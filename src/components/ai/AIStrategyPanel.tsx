@@ -488,6 +488,31 @@ export default function AIStrategyPanel({
           ) : null}
 
           <div className="mt-4">
+            <div className="mb-4 overflow-hidden rounded-[26px] border border-cyan-400/20 bg-linear-to-br from-cyan-400/12 via-white/[0.05] to-indigo-500/10 p-5 shadow-[0_18px_50px_-30px_rgba(34,211,238,0.35)]">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-white">
+                  {preferredName
+                    ? `You now have a clear direction, ${preferredName}.`
+                    : "You now have a clear direction to increase your CRS."}
+                </div>
+                <div className="mt-3 text-sm leading-6 text-white/74">
+                  But this is where most applicants lose time - not knowing how to execute it correctly.
+                </div>
+                <div className="mt-3 text-sm leading-6 text-white/82">
+                  Your full roadmap shows exactly what to do, in what order, and how to avoid common mistakes.
+                </div>
+                <div className="mt-3 text-sm font-medium text-cyan-100">
+                  Small mistakes here can cost months.
+                </div>
+                <Link
+                  href={upgradeHref}
+                  className="mt-5 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-gray-200"
+                >
+                  Show me exactly how to do this
+                </Link>
+              </div>
+            </div>
+
             <LockedInsightBlock
               title="Unlock your full AI roadmap"
               features={[
