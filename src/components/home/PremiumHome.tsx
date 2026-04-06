@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { buildUpgradeEntryHref } from "@/lib/upgrade";
@@ -59,12 +59,12 @@ const solutionCards = [
 ];
 
 const valueStack = [
-  { label: "AI-generated strategy", color: "text-cyan-300 border-cyan-400/20 bg-cyan-400/8" },
-  { label: "Step-by-step roadmap", color: "text-blue-300 border-blue-400/20 bg-blue-400/8" },
-  { label: "French / IELTS / PNP paths", color: "text-violet-300 border-violet-400/20 bg-violet-400/8" },
-  { label: "Personalized to your profile", color: "text-cyan-300 border-cyan-400/20 bg-cyan-400/8" },
-  { label: "Save and track your progress", color: "text-blue-300 border-blue-400/20 bg-blue-400/8" },
-  { label: "Advisor-style insights", color: "text-violet-300 border-violet-400/20 bg-violet-400/8" },
+  { label: "AI-generated strategy",       color: "text-cyan-300   border-cyan-400/25   bg-cyan-400/10"   },
+  { label: "Step-by-step roadmap",        color: "text-blue-300   border-blue-400/25   bg-blue-400/10"   },
+  { label: "French / IELTS / PNP paths",  color: "text-violet-300 border-violet-400/25 bg-violet-400/10" },
+  { label: "Personalized to your profile",color: "text-emerald-300 border-emerald-400/25 bg-emerald-400/10" },
+  { label: "Save and track your progress",color: "text-amber-300  border-amber-400/25  bg-amber-400/10"  },
+  { label: "Advisor-style insights",      color: "text-pink-300   border-pink-400/25   bg-pink-400/10"   },
 ];
 
 const howItWorks = [
@@ -128,10 +128,66 @@ const pricingPlans = [
 ];
 
 const problemStats = [
-  { value: "78%", label: "pick the wrong move first" },
-  { value: "3–6 mo", label: "lost optimizing the wrong thing" },
-  { value: "40+ pts", label: "left on the table from bad sequencing" },
+  { raw: "78%",    prefix: "",  end: 78, suffix: "%",      label: "pick the wrong move first" },
+  { raw: "3–6 mo", prefix: "",  end: 3,  suffix: "–6 mo",  label: "lost optimizing the wrong thing" },
+  { raw: "40+",    prefix: "",  end: 40, suffix: "+ pts",   label: "left on the table from bad sequencing" },
 ];
+
+function useCountUp(end: number, duration = 1600) {
+  const [count, setCount] = useState(0);
+  const [triggered, setTriggered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setTriggered(true); },
+      { threshold: 0.6 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!triggered) return;
+    const startTime = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(eased * end));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [triggered, end, duration]);
+
+  return { count, ref };
+}
+
+function CounterStat({
+  end,
+  suffix,
+  label,
+}: {
+  end: number;
+  suffix: string;
+  label: string;
+}) {
+  const { count, ref } = useCountUp(end);
+  return (
+    <div
+      ref={ref}
+      className="rounded-[20px] border border-red-500/20 bg-red-500/[0.07] p-5"
+    >
+      <div className="text-3xl font-bold tracking-tight text-red-200 tabular-nums">
+        {count}{suffix}
+      </div>
+      <div className="mt-2 text-sm text-white/60">{label}</div>
+    </div>
+  );
+}
 
 function Section({
   id,
@@ -234,7 +290,7 @@ export default function PremiumHome() {
 
             <motion.h1
               variants={itemVariants}
-              className="mt-6 text-5xl font-semibold tracking-tight text-white sm:text-6xl"
+              className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl"
             >
               Stop guessing your CRS path.
               <span className="mt-2 block bg-linear-to-r from-cyan-200 via-blue-200 to-violet-200 bg-clip-text text-transparent">
@@ -289,12 +345,12 @@ export default function PremiumHome() {
             <div className="absolute inset-0 rounded-[32px] bg-[radial-gradient(circle_at_50%_20%,rgba(59,130,246,0.2),transparent_45%)] blur-2xl" />
             <div className="relative rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_100px_-60px_rgba(59,130,246,0.45)] backdrop-blur-xl">
               <div className="rounded-[24px] border border-white/10 bg-black/25 p-5">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
                       Simulator preview
                     </div>
-                    <div className="mt-2 text-2xl font-semibold text-white">
+                    <div className="mt-2 text-xl font-semibold text-white sm:text-2xl">
                       Your strongest next move
                     </div>
                   </div>
@@ -383,15 +439,12 @@ export default function PremiumHome() {
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {problemStats.map((stat) => (
-                <div
-                  key={stat.value}
-                  className="rounded-[20px] border border-red-500/20 bg-red-500/[0.07] p-5"
-                >
-                  <div className="text-3xl font-bold tracking-tight text-red-200">
-                    {stat.value}
-                  </div>
-                  <div className="mt-2 text-sm text-white/60">{stat.label}</div>
-                </div>
+                <CounterStat
+                  key={stat.raw}
+                  end={stat.end}
+                  suffix={stat.suffix}
+                  label={stat.label}
+                />
               ))}
             </div>
           </motion.div>
@@ -402,8 +455,12 @@ export default function PremiumHome() {
       <Section
         eyebrow="The solution"
         title="This is not a calculator."
-        subtitle="This is a decision system."
       >
+        <motion.div variants={itemVariants} className="mb-8">
+          <div className="bg-linear-to-r from-cyan-200 via-blue-200 to-violet-300 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl">
+            This is a decision system.
+          </div>
+        </motion.div>
         <motion.div
           variants={containerVariants}
           className="grid gap-4 lg:grid-cols-3"
@@ -592,7 +649,7 @@ export default function PremiumHome() {
               key={plan.name}
               variants={itemVariants}
               className={[
-                "relative overflow-hidden rounded-[30px] p-7 backdrop-blur-xl",
+                "relative overflow-hidden rounded-[30px] p-5 backdrop-blur-xl sm:p-7",
                 plan.isPro
                   ? "border border-blue-400/35 bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(139,92,246,0.08),rgba(255,255,255,0.04))] shadow-[0_0_60px_rgba(59,130,246,0.22),0_0_0_1px_rgba(59,130,246,0.15)]"
                   : "border border-white/10 bg-white/[0.04]",
