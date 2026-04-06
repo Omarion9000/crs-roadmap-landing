@@ -50,7 +50,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased bg-white">
+      <body className="antialiased bg-[#070A12]">
         <div className="min-h-screen flex flex-col">
           <Navbar />
 
