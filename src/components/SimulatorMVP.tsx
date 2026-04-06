@@ -1424,8 +1424,15 @@ export default function SimulatorMVP() {
     () => top.filter((scenario) => scenario.eligible && !scenarioAlreadyAchieved(profile, scenario.id)),
     [profile, top]
   );
-  const primaryVisibleTop = useMemo(() => visibleTop.slice(0, 3), [visibleTop]);
-  const extraVisibleTop = useMemo(() => visibleTop.slice(3), [visibleTop]);
+  const eligibleScenarioUniverse = useMemo(
+    () =>
+      [...allScenarios]
+        .filter((scenario) => scenario.eligible && !scenarioAlreadyAchieved(profile, scenario.id))
+        .sort((a, b) => b.delta - a.delta),
+    [allScenarios, profile]
+  );
+  const primaryVisibleTop = useMemo(() => eligibleScenarioUniverse.slice(0, 3), [eligibleScenarioUniverse]);
+  const extraVisibleTop = useMemo(() => eligibleScenarioUniverse.slice(3), [eligibleScenarioUniverse]);
   const hasInitialData = top.length > 0;
   const isInitialLoading = loading && !hasInitialData;
   const isRefreshing = loading && hasInitialData;
@@ -1439,6 +1446,12 @@ export default function SimulatorMVP() {
     const availableIds = new Set(availableOpportunities.map((opportunity) => opportunity.scenarioId));
     setSelectedOpportunityIds((prev) => prev.filter((id) => availableIds.has(id)));
   }, [availableOpportunities]);
+
+  useEffect(() => {
+    if (extraVisibleTop.length === 0) {
+      setShowAllScenarios(false);
+    }
+  }, [extraVisibleTop.length]);
 
   const selectedScenarioResults = useMemo(() => {
     if (!baseProfileReady) {
@@ -2424,15 +2437,10 @@ export default function SimulatorMVP() {
 
 
         {/* MAIN GRID */}
-        <motion.div
-          className="grid items-start gap-8 lg:grid-cols-[420px_1fr]"
-          initial="hidden"
-          animate="visible"
-          variants={staggerShell}
-        >
+        <div className="grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
           {/* LEFT: Profile + simulation controls */}
-          <div className="self-start lg:sticky lg:top-28">
-            <motion.div variants={fadeUp} className="group">
+          <aside className="self-start lg:sticky lg:top-28">
+            <MotionReveal className="group">
               <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
                 <ProfileSummaryPanel
                   profileSummaryItems={profileSummaryItems}
@@ -2449,11 +2457,12 @@ export default function SimulatorMVP() {
                   onClearPreviews={() => setSelectedOpportunityIds([])}
                 />
               </GlassPanel>
-            </motion.div>
-          </div>
+            </MotionReveal>
+          </aside>
 
           {/* RIGHT: Results */}
-          <motion.div variants={fadeUp}>
+          <section className="min-w-0">
+          <MotionReveal>
           <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -2900,6 +2909,9 @@ export default function SimulatorMVP() {
                         <div className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
                           Secondary opportunities like CEC and other roadmap paths still matter. Review them here without losing the focus on your strongest top recommendations.
                         </div>
+                        <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/70">
+                          {extraVisibleTop.length} additional {extraVisibleTop.length === 1 ? "path" : "paths"} available
+                        </div>
                       </div>
 
                       <button
@@ -2911,30 +2923,38 @@ export default function SimulatorMVP() {
                       </button>
                     </div>
 
-                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {extraVisibleTop
-                        .slice(0, Math.min(extraVisibleTop.length, 3))
-                        .map((scenario) => (
-                          <button
-                            key={scenario.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedOpportunityIds((prev) =>
-                                prev.includes(scenario.id) ? prev : [...prev, scenario.id]
-                              );
-                            }}
-                            className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.05]"
-                          >
-                            <div className="text-sm font-semibold text-white">{scenario.title}</div>
-                            <div className="mt-2 text-xs leading-5 text-white/60">
-                              {scenarioNoteText(scenario.title)}
-                            </div>
-                            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70">
-                              +{scenario.delta} CRS
-                            </div>
-                          </button>
-                        ))}
-                    </div>
+                    <AnimatePresence initial={false}>
+                      {showAllScenarios ? (
+                        <motion.div
+                          className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          {extraVisibleTop.map((scenario) => (
+                            <button
+                              key={scenario.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedOpportunityIds((prev) =>
+                                  prev.includes(scenario.id) ? prev : [...prev, scenario.id]
+                                );
+                              }}
+                              className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.05]"
+                            >
+                              <div className="text-sm font-semibold text-white">{scenario.title}</div>
+                              <div className="mt-2 text-xs leading-5 text-white/60">
+                                {scenarioNoteText(scenario.title)}
+                              </div>
+                              <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70">
+                                +{scenario.delta} CRS
+                              </div>
+                            </button>
+                          ))}
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
 
                     {userPlan !== "pro" ? (
                       <div className="mt-5 rounded-[24px] border border-cyan-400/20 bg-cyan-400/10 p-4 shadow-[0_16px_40px_-32px_rgba(34,211,238,0.28)]">
@@ -2964,28 +2984,6 @@ export default function SimulatorMVP() {
                         </div>
                       </div>
                     ) : null}
-
-                    <AnimatePresence initial={false}>
-                      {showAllScenarios && extraVisibleTop.length > 3 ? (
-                        <motion.div
-                          className="mt-4 grid gap-4"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                          {extraVisibleTop.slice(3).map((scenario) => (
-                            <ScenarioOpportunityCard
-                              key={scenario.id}
-                              scenario={scenario}
-                              profile={profile}
-                              cutoff={cutoff}
-                              userPlan={userPlan}
-                            />
-                          ))}
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
                   </div>
                 </div>
               ) : null}
@@ -3000,8 +2998,9 @@ export default function SimulatorMVP() {
               <div className="text-xs text-white/50">v2.3 • Benchmark + Strategy</div>
             </div>
           </GlassPanel>
-          </motion.div>
-        </motion.div>
+          </MotionReveal>
+          </section>
+        </div>
           </>
         )}
       </main>
