@@ -2431,27 +2431,26 @@ export default function SimulatorMVP() {
           variants={staggerShell}
         >
           {/* LEFT: Profile + simulation controls */}
-          <motion.div
-            variants={fadeUp}
-            className="group self-start lg:sticky lg:top-28"
-          >
-          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
-            <ProfileSummaryPanel
-              profileSummaryItems={profileSummaryItems}
-              availableOpportunities={availableOpportunities}
-              scenarioToggles={selectedOpportunityLookup}
-              activeToggleCount={activeToggleCount}
-              onToggleOpportunity={(scenarioId) => {
-                setSelectedOpportunityIds((prev) =>
-                  prev.includes(scenarioId)
-                    ? prev.filter((id) => id !== scenarioId)
-                    : [...prev, scenarioId]
-                );
-              }}
-              onClearPreviews={() => setSelectedOpportunityIds([])}
-            />
-          </GlassPanel>
-          </motion.div>
+          <div className="self-start lg:sticky lg:top-28">
+            <motion.div variants={fadeUp} className="group">
+              <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
+                <ProfileSummaryPanel
+                  profileSummaryItems={profileSummaryItems}
+                  availableOpportunities={availableOpportunities}
+                  scenarioToggles={selectedOpportunityLookup}
+                  activeToggleCount={activeToggleCount}
+                  onToggleOpportunity={(scenarioId) => {
+                    setSelectedOpportunityIds((prev) =>
+                      prev.includes(scenarioId)
+                        ? prev.filter((id) => id !== scenarioId)
+                        : [...prev, scenarioId]
+                    );
+                  }}
+                  onClearPreviews={() => setSelectedOpportunityIds([])}
+                />
+              </GlassPanel>
+            </motion.div>
+          </div>
 
           {/* RIGHT: Results */}
           <motion.div variants={fadeUp}>
