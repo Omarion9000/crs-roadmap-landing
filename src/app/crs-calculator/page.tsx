@@ -1,17 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import {
-  getBaseProfileOwnerKey,
-  persistStoredBaseProfile,
-  type StoredBaseProfilePayload,
-} from "@/lib/crs/baseProfile";
-import { trackFunnelEvent, trackFunnelEventOnce } from "@/lib/funnel";
-import { normalizePreferredName } from "@/lib/personalization";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useMemo, useState, type ReactNode } from "react";
 
 type YesNo = "yes" | "no" | "";
 
@@ -144,7 +133,6 @@ type ScoreOption =
   | "clb-10-plus";
 
 type CalculatorData = {
-  preferred_name: string;
   maritalStatus: MaritalStatus;
   spouseIsCitizenOrPr: YesNo;
   spouseComing: YesNo;
@@ -315,141 +303,6 @@ function scoreLabel(score: ScoreOption) {
       return "CLB 10+";
     default:
       return "—";
-  }
-}
-
-function scoreOptionToClb(score: ScoreOption) {
-  switch (score) {
-    case "clb-4":
-      return 4;
-    case "clb-5":
-      return 5;
-    case "clb-6":
-      return 6;
-    case "clb-7":
-      return 7;
-    case "clb-8":
-      return 8;
-    case "clb-9":
-      return 9;
-    case "clb-10-plus":
-      return 10;
-    default:
-      return 0;
-  }
-}
-
-function minimumClb(scores: ScoreOption[]) {
-  const resolved = scores.map(scoreOptionToClb).filter((value) => value > 0);
-  if (!resolved.length) return 0;
-  return Math.min(...resolved);
-}
-
-function firstLanguageTestLabel(test: FirstLanguageTest) {
-  return firstLanguageTests.find((option) => option.value === test)?.label;
-}
-
-function secondLanguageTestLabel(test: SecondLanguageTest) {
-  return secondLanguageTests.find((option) => option.value === test)?.label;
-}
-
-function educationLabel(value: EducationLevel) {
-  switch (value) {
-    case "secondary":
-      return "Secondary";
-    case "one-year":
-      return "One-year post-secondary";
-    case "two-year":
-      return "Two-year post-secondary";
-    case "bachelors-or-three-plus":
-      return "Bachelor's or 3+ year program";
-    case "two-or-more":
-      return "Two or more credentials";
-    case "masters-professional":
-      return "Master's or professional degree";
-    case "phd":
-      return "PhD";
-    default:
-      return undefined;
-  }
-}
-
-function maritalStatusLabel(value: MaritalStatus) {
-  switch (value) {
-    case "annulled-marriage":
-      return "Annulled marriage";
-    case "common-law":
-      return "Common-law";
-    case "divorced-separated":
-      return "Divorced / separated";
-    case "legally-separated":
-      return "Legally separated";
-    case "married":
-      return "Married";
-    case "never-married-single":
-      return "Never married / single";
-    case "widowed":
-      return "Widowed";
-    default:
-      return undefined;
-  }
-}
-
-function foreignExperienceLabel(value: ExperienceForeignOption) {
-  switch (value) {
-    case "none-or-less-than-one":
-      return "Less than 1 year";
-    case "1":
-      return "1 year";
-    case "2":
-      return "2 years";
-    case "3-or-more":
-      return "3+ years";
-    default:
-      return undefined;
-  }
-}
-
-function canadianCredentialLabel(
-  hasCanadianCredential: YesNo,
-  level: CanadianCredentialLevel
-) {
-  if (hasCanadianCredential !== "yes") return "No Canadian credential";
-
-  switch (level) {
-    case "secondary-or-less":
-      return "Canadian secondary or less";
-    case "one-or-two-year":
-      return "Canadian 1-2 year credential";
-    case "three-plus-or-masters-phd":
-      return "Canadian 3+ year / master's / PhD credential";
-    default:
-      return "Canadian credential";
-  }
-}
-
-function isEnglishTestType(test: FirstLanguageTest | SecondLanguageTest) {
-  return test === "celpip-g" || test === "ielts" || test === "pte-core";
-}
-
-function isFrenchTestType(test: FirstLanguageTest | SecondLanguageTest) {
-  return test === "tef-canada" || test === "tcf-canada";
-}
-
-function canadianExperienceYears(value: ExperienceCanadaOption) {
-  switch (value) {
-    case "1":
-      return 1;
-    case "2":
-      return 2;
-    case "3":
-      return 3;
-    case "4":
-      return 4;
-    case "5-or-more":
-      return 5;
-    default:
-      return 0;
   }
 }
 
@@ -783,12 +636,9 @@ const secondLanguage = languageValid
 }
 
 export default function CRSCalculatorPage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [authUser, setAuthUser] = useState<User | null>(null);
 
   const [form, setForm] = useState<CalculatorData>({
-    preferred_name: "",
     maritalStatus: "",
     spouseIsCitizenOrPr: "",
     spouseComing: "",
@@ -832,110 +682,6 @@ export default function CRSCalculatorPage() {
     form.maritalStatus === "married" || form.maritalStatus === "common-law";
 
   const crsPreview = useMemo(() => calculateCrsPreview(form), [form]);
-  const baseProfileOwnerKey = useMemo(() => getBaseProfileOwnerKey(authUser), [authUser]);
-
-  useEffect(() => {
-    trackFunnelEventOnce("base-profile-started", "base_profile_started", {
-      source: "calculator",
-    });
-  }, []);
-
-  useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    let alive = true;
-
-    async function loadAuthUser() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!alive) return;
-      setAuthUser(session?.user ?? null);
-    }
-
-    void loadAuthUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!alive) return;
-      setAuthUser(session?.user ?? null);
-    });
-
-    return () => {
-      alive = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const storedBaseProfile = useMemo<StoredBaseProfilePayload>(() => {
-    const englishFromFirst = isEnglishTestType(form.firstLanguageTest)
-      ? minimumClb([
-          form.firstSpeaking,
-          form.firstListening,
-          form.firstReading,
-          form.firstWriting,
-        ])
-      : 0;
-
-    const englishFromSecond = isEnglishTestType(form.secondLanguageTest)
-      ? minimumClb([
-          form.secondSpeaking,
-          form.secondListening,
-          form.secondReading,
-          form.secondWriting,
-        ])
-      : 0;
-
-    const frenchFromFirst = isFrenchTestType(form.firstLanguageTest)
-      ? minimumClb([
-          form.firstSpeaking,
-          form.firstListening,
-          form.firstReading,
-          form.firstWriting,
-        ])
-      : 0;
-
-    const frenchFromSecond = isFrenchTestType(form.secondLanguageTest)
-      ? minimumClb([
-          form.secondSpeaking,
-          form.secondListening,
-          form.secondReading,
-          form.secondWriting,
-        ])
-      : 0;
-
-    return {
-      createdAt: new Date().toISOString(),
-      ownerKey: baseProfileOwnerKey,
-      baseProfile: {
-        currentCrs: crsPreview.total,
-        preferred_name: normalizePreferredName(form.preferred_name) ?? undefined,
-        englishClb: Math.max(englishFromFirst, englishFromSecond),
-        frenchClb: Math.max(frenchFromFirst, frenchFromSecond),
-        canadianExperienceYears: canadianExperienceYears(form.canadianExperience),
-        hasJobOffer: form.hasValidJobOffer === "yes",
-        hasPnp: form.hasProvincialNomination === "yes",
-        educationLabel: educationLabel(form.educationLevel),
-        maritalStatusLabel: maritalStatusLabel(form.maritalStatus),
-        foreignExperienceLabel: foreignExperienceLabel(form.foreignExperience),
-        canadianCredentialLabel: canadianCredentialLabel(
-          form.hasCanadianCredential,
-          form.canadianCredentialLevel
-        ),
-        firstLanguageTestLabel: firstLanguageTestLabel(form.firstLanguageTest),
-        secondLanguageTestLabel: secondLanguageTestLabel(form.secondLanguageTest),
-        profileModeLabel: crsPreview.treatedAsNoSpouse
-          ? "Without spouse points"
-          : "With spouse points",
-        rawForm: form,
-      },
-    };
-  }, [baseProfileOwnerKey, crsPreview.total, crsPreview.treatedAsNoSpouse, form]);
-
-  useEffect(() => {
-    persistStoredBaseProfile(storedBaseProfile);
-  }, [storedBaseProfile]);
 
   function updateField<K extends keyof CalculatorData>(
     field: K,
@@ -1034,15 +780,6 @@ export default function CRSCalculatorPage() {
   }
 }
 
-  function continueToSimulator() {
-    persistStoredBaseProfile(storedBaseProfile);
-    trackFunnelEvent("base_profile_completed", {
-      source: "calculator",
-      currentCrs: storedBaseProfile.baseProfile.currentCrs,
-    });
-    router.push("/simulator?entry=activation");
-  }
-
   function renderStep() {
     switch (currentStep) {
       case 0:
@@ -1055,20 +792,6 @@ export default function CRSCalculatorPage() {
             />
 
             <div className="grid gap-5">
-              <div>
-                <FieldLabel>What should we call you?</FieldLabel>
-                <input
-                  type="text"
-                  value={form.preferred_name}
-                  onChange={(e) => updateField("preferred_name", e.target.value)}
-                  placeholder="First name"
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-cyan-400/60 focus:bg-white/10"
-                />
-                <p className="mt-2 text-sm text-white/50">
-                  Optional, but it helps make your roadmap feel more personal.
-                </p>
-              </div>
-
               <div>
                 <FieldLabel>What is your marital status?</FieldLabel>
                 <SelectField
@@ -1688,16 +1411,10 @@ export default function CRSCalculatorPage() {
           <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/80">
             CRS Roadmap
           </div>
-          <div className="mt-4 text-sm font-semibold text-cyan-200/75">
-            Step 1 - Build your base CRS profile
-          </div>
-          <div className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
-            This profile becomes the foundation for your simulator and saved roadmap.
-          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-          <section className="rounded-[28px] border border-white/10 bg-gradient-to-b from-white/8 to-white/4 p-8 shadow-2xl shadow-black/20 backdrop-blur-sm">
+          <section className="rounded-[28px] border border-white/10 bg-linear-to-b from-white/8 to-white/4 p-8 shadow-2xl shadow-black/20 backdrop-blur-sm">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="text-sm font-medium text-white/50">
                 Step {currentStep + 1} of {steps.length}
@@ -1709,7 +1426,7 @@ export default function CRSCalculatorPage() {
 
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300"
+                className="h-full rounded-full bg-linear-to-r from-cyan-400 to-blue-500 transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -1741,32 +1458,6 @@ export default function CRSCalculatorPage() {
                 Next
               </button>
             </div>
-
-            {currentStep === steps.length - 1 ? (
-              <div className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                      Next step
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      Continue with your simulator
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-white/70">
-                      Your base CRS profile is ready and stored for the simulator roadmap flow.
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={continueToSimulator}
-                    className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
-                  >
-                    Continue to simulator
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </section>
 
           <aside className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
@@ -1781,12 +1472,6 @@ export default function CRSCalculatorPage() {
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
                 <span className="text-white/45">Estimated CRS:</span> {crsPreview.total}
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Simulator flow:</span>{" "}
-                <span className="font-semibold text-white">
-                  Base profile saved locally
-                </span>
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
                 <span className="text-white/45">Marital status:</span>{" "}
@@ -1815,12 +1500,10 @@ export default function CRSCalculatorPage() {
                 <span className="text-white/45">Provincial nomination:</span>{" "}
                 {form.hasProvincialNomination || "—"}
               </div>
-              <Link
-                href="/simulator"
-                className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15"
-              >
-                Continue to simulator
-              </Link>
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
+                <span className="text-white/45">Sibling in Canada:</span>{" "}
+                {form.hasSiblingInCanada || "—"}
+              </div>
             </div>
           </aside>
         </div>

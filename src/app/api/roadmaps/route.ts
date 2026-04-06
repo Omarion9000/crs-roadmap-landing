@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserPlan, isProUser } from "@/lib/subscriptions";
+import { getUserPlan } from "@/lib/subscriptions";
 
 type SaveRoadmapPayload = {
   email?: string;
   profile_snapshot?: unknown;
   program_target?: string;
   top_scenarios?: unknown;
-  replace_roadmap_id?: string;
 };
 
 type RoadmapRow = {
@@ -63,8 +62,9 @@ async function requireAuthenticatedProUser(): Promise<AuthenticatedProUser> {
   }
 
   const userPlan = await getUserPlan(user.id);
+  const normalizedPlan = userPlan.trim().toLowerCase();
 
-  if (!isProUser(userPlan)) {
+  if (normalizedPlan !== "pro") {
     throw new Error("Pro plan required");
   }
 
@@ -74,21 +74,18 @@ async function requireAuthenticatedProUser(): Promise<AuthenticatedProUser> {
   };
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const user = await requireAuthenticatedProUser();
     const supabase = createAdminRoadmapsClient();
-    const { searchParams } = new URL(req.url);
-    const roadmapId = (searchParams.get("id") ?? "").trim();
 
-    const query = supabase
+    const { data, error } = await supabase
       .from("roadmaps")
       .select("id, user_id, email, profile_snapshot, program_target, top_scenarios, created_at")
-      .eq("user_id", user.id);
-
-    const { data, error } = roadmapId
-      ? await query.eq("id", roadmapId).maybeSingle<RoadmapRow>()
-      : await query.order("created_at", { ascending: false }).limit(1).maybeSingle<RoadmapRow>();
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<RoadmapRow>();
 
     if (error) {
       return NextResponse.json(
@@ -164,72 +161,25 @@ export async function POST(req: Request) {
     }
 
     const supabase = createAdminRoadmapsClient();
-    const replaceRoadmapId =
-      typeof body.replace_roadmap_id === "string" ? body.replace_roadmap_id.trim() : "";
 
-    const { count, error: countError } = await supabase
+    const { data, error } = await supabase
       .from("roadmaps")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
-
-    if (countError) {
-      return NextResponse.json(
-        { ok: false, error: countError.message },
-        { status: 500 }
-      );
-    }
-
-    const roadmapCount = count ?? 0;
-
-    if (roadmapCount >= 2 && !replaceRoadmapId) {
-      return NextResponse.json(
+      .insert([
         {
-          ok: false,
-          code: "roadmap_limit_reached",
-          error: "Roadmap limit reached",
+          user_id: user.id,
+          email,
+          profile_snapshot: body.profile_snapshot,
+          program_target: body.program_target,
+          top_scenarios: body.top_scenarios,
         },
-        { status: 409 }
-      );
-    }
-
-    const writeQuery = replaceRoadmapId
-      ? supabase
-          .from("roadmaps")
-          .update({
-            email,
-            profile_snapshot: body.profile_snapshot,
-            program_target: body.program_target,
-            top_scenarios: body.top_scenarios,
-          })
-          .eq("id", replaceRoadmapId)
-          .eq("user_id", user.id)
-      : supabase.from("roadmaps").insert([
-          {
-            user_id: user.id,
-            email,
-            profile_snapshot: body.profile_snapshot,
-            program_target: body.program_target,
-            top_scenarios: body.top_scenarios,
-          },
-        ]);
-
-    const { data, error } = await writeQuery.select("id, email, created_at").maybeSingle();
+      ])
+      .select("id, email, created_at")
+      .single();
 
     if (error) {
       return NextResponse.json(
         { ok: false, error: error.message },
         { status: 500 }
-      );
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "roadmap_replace_failed",
-          error: "Roadmap not found for replacement",
-        },
-        { status: 404 }
       );
     }
 

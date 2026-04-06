@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAuthBaseUrl } from "@/lib/authRedirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe";
-import { buildPostUpgradeHref, type UpgradeUnlock } from "@/lib/upgrade";
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -21,22 +19,7 @@ export async function POST(req: Request) {
     }
 
     const priceId = process.env.STRIPE_PRICE_PRO;
-    const appUrl = getAuthBaseUrl({ requestOrigin: new URL(req.url).origin });
-    const body = (await req.json().catch(() => null)) as
-      | { returnTo?: string; unlock?: UpgradeUnlock }
-      | null;
-    const returnTo = typeof body?.returnTo === "string" ? body.returnTo : null;
-    const unlock = body?.unlock ?? "pro";
-    const successPath = buildPostUpgradeHref(returnTo, unlock);
-    const cancelParams = new URLSearchParams({ canceled: "true" });
-
-    if (returnTo) {
-      cancelParams.set("returnTo", returnTo);
-    }
-
-    if (unlock) {
-      cancelParams.set("unlock", unlock);
-    }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     if (!priceId) {
       return NextResponse.json(
@@ -57,22 +40,18 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}${successPath}`,
-      cancel_url: `${appUrl}/billing?${cancelParams.toString()}`,
+      success_url: `${appUrl}/billing?success=true`,
+      cancel_url: `${appUrl}/billing?canceled=true`,
       metadata: {
         user_id: user.id,
         email: user.email,
         plan: "pro",
-        unlock,
-        return_to: returnTo ?? "",
       },
       subscription_data: {
         metadata: {
           user_id: user.id,
           email: user.email,
           plan: "pro",
-          unlock,
-          return_to: returnTo ?? "",
         },
       },
     });
