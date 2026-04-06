@@ -465,7 +465,7 @@ export default function AIStrategyPanel({
               Get complete execution steps, sequencing, and a personalized strategy built specifically for your CRS profile.
             </div>
             <div className="mt-4 rounded-[20px] border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-7 text-blue-50/90">
-              You already know your strongest move. Unlock Pro to see exactly how to execute it.
+              You already know your strongest move. Unlock your full roadmap to see exactly how to execute it.
             </div>
           </div>
 
@@ -517,7 +517,7 @@ export default function AIStrategyPanel({
                 <div>• long-term CRS optimization strategy</div>
               </div>
               <div className="mt-3 font-medium text-cyan-100">
-                Unlock to see everything and turn this preview into a complete execution plan.
+                You already know your strongest move. Unlock your full roadmap to see exactly how to execute it.
               </div>
             </div>
           </div>
@@ -663,8 +663,8 @@ export default function AIStrategyPanel({
             <div className="mt-3 text-sm leading-6 text-emerald-50/88">
               {advisorLine(
                 preferredName,
-                "for your current profile, this is the clearest high-impact move.",
-                "For your current profile, this is the clearest high-impact move."
+                "for your current profile, this should lead your plan right now.",
+                "For your current profile, this should lead your plan right now."
               )}
             </div>
             {recommendation.impact_summary ? (
