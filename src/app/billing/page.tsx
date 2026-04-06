@@ -132,15 +132,6 @@ export default async function BillingPage({
   const continueHref = returnTo ? buildPostUpgradeHref(returnTo, unlock) : "/dashboard";
   const stripeConfigured = Boolean(process.env.STRIPE_PRICE_PRO);
 
-  console.log("[billing] route opened");
-  console.log("[billing] authenticated:", "checking");
-  console.log("[billing] returnTo:", returnTo);
-  console.log("[billing] unlock:", unlock);
-  console.log("[billing] stripe config present:", stripeConfigured ? "yes" : "no");
-  if (!stripeConfigured) {
-    console.log("[billing] missing config: STRIPE_PRICE_PRO");
-  }
-
   let userEmail = "";
   let normalizedPlan = "free";
   let latestRoadmap: RoadmapRow | null = null;
@@ -152,7 +143,6 @@ export default async function BillingPage({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log("[billing] authenticated:", "no");
       redirect(
         buildLoginHref({
           returnTo: buildBillingHref({
@@ -163,7 +153,6 @@ export default async function BillingPage({
       );
     }
 
-    console.log("[billing] authenticated:", "yes");
     userEmail = user.email ?? "";
     normalizedPlan = await getUserPlan(user.id);
 
@@ -322,7 +311,6 @@ export default async function BillingPage({
     }
 
     if (!priceId) {
-      console.log("[billing] missing config: STRIPE_PRICE_PRO");
       throw new Error("Missing STRIPE_PRICE_PRO");
     }
 
@@ -368,11 +356,6 @@ export default async function BillingPage({
       if (isRedirectError(error)) {
         throw error;
       }
-
-      console.log(
-        "[billing] checkout error:",
-        error instanceof Error ? error.message : "unknown"
-      );
 
       const retryHref = buildBillingHref({
         returnTo: actionReturnTo,

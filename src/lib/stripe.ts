@@ -12,9 +12,6 @@ export function getStripeServer() {
 
   const nextSuffix = secret.slice(-6);
 
-  // TEMP DEBUG: verify which runtime secret is being used on the server.
-  console.log("[stripe] runtime secret suffix:", nextSuffix);
-
   if (!stripeInstance || stripeSecretSuffix !== nextSuffix) {
     stripeInstance = new Stripe(secret, {
       apiVersion: "2026-02-25.clover",
