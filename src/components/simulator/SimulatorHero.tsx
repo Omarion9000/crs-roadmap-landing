@@ -1,12 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ProgramKey } from "@/lib/insights/api";
 
 type ProgramOption = {
-  key: ProgramKey;
+  key: "general" | "category" | "programs";
   label: string;
-  enabled: boolean;
 };
 
 type SimulatorHeroProps = {
@@ -16,8 +14,8 @@ type SimulatorHeroProps = {
   benchSourceLabel: string;
   programOptions: readonly ProgramOption[];
   activeIndex: number;
-  programTarget: ProgramKey;
-  onProgramChange: (program: ProgramKey) => void;
+  activeKey: ProgramOption["key"];
+  onProgramChange: (program: ProgramOption["key"]) => void;
 };
 
 export default function SimulatorHero({
@@ -27,7 +25,7 @@ export default function SimulatorHero({
   benchSourceLabel,
   programOptions,
   activeIndex,
-  programTarget,
+  activeKey,
   onProgramChange,
 }: SimulatorHeroProps) {
   return (
@@ -102,7 +100,7 @@ export default function SimulatorHero({
               }}
               className="mt-5 max-w-2xl text-base leading-8 text-white/65"
             >
-              Model your best next move, compare high-impact scenarios, and build a smarter CRS roadmap before you spend time or money in the wrong direction.
+              Model your next move, understand your program eligibility, and build a smarter CRS roadmap before you spend time or money in the wrong direction.
             </motion.p>
 
             <motion.div
@@ -197,30 +195,25 @@ export default function SimulatorHero({
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             />
 
-            <div className="relative z-10 grid grid-cols-5 gap-1">
+            <div className="relative z-10 grid grid-cols-3 gap-1">
               {programOptions.map((o) => {
-                const isActive = o.key === programTarget;
-                const disabled = !o.enabled;
+                const isActive = o.key === activeKey;
 
                 return (
                   <button
                     key={o.key}
                     type="button"
-                    disabled={disabled}
                     onClick={() => onProgramChange(o.key)}
                     className={[
                       "rounded-full px-3 py-1.5 text-xs font-semibold transition duration-300",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
-                      disabled
-                        ? "cursor-not-allowed text-white/26"
-                        : isActive
+                      isActive
                         ? "text-white"
                         : "text-white/68 hover:text-white",
                     ].join(" ")}
-                    title={disabled ? `${o.label} (soon)` : o.label}
+                    title={o.label}
                   >
                     {o.label}
-                    {!o.enabled ? <span className="ml-1 text-[10px] text-white/30">• soon</span> : null}
                   </button>
                 );
               })}

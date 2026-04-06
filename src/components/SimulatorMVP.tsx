@@ -308,9 +308,9 @@ function GlassPanel({
 function programLabel(p: ProgramKey) {
   if (p === "general") return "General";
   if (p === "category") return "Category";
-  if (p === "cec") return "CEC (soon)";
-  if (p === "fsw") return "FSW (soon)";
-  return "PNP (soon)";
+  if (p === "cec") return "CEC";
+  if (p === "fsw") return "FSW";
+  return "PNP";
 }
 
 function formatUpdatedAt(v: string) {
@@ -372,6 +372,8 @@ type ScenarioOpportunity = {
   title: string;
   description: string;
 };
+
+type SimulatorTopTabKey = "general" | "category" | "programs";
 
 const simulationOpportunities: ScenarioOpportunity[] = [
   {
@@ -925,6 +927,8 @@ export default function SimulatorMVP() {
   const simulatorEntry = searchParams.get("entry") ?? "";
   const restoredRoadmapIdRef = useRef<string | null>(null);
   const previousBaseProfileOwnerKeyRef = useRef<string | null | undefined>(undefined);
+  const eligibilitySectionRef = useRef<HTMLDivElement | null>(null);
+  const [highlightEligibility, setHighlightEligibility] = useState(false);
 
   // Benchmark data
   const [bench, setBench] = useState<BenchmarkData | null>(null);
@@ -1073,19 +1077,34 @@ export default function SimulatorMVP() {
   const programOptions = useMemo(
     () =>
       [
-        { key: "general" as ProgramKey, label: "General", enabled: true },
-        { key: "category" as ProgramKey, label: "Category", enabled: true },
-        { key: "cec" as ProgramKey, label: "CEC", enabled: false },
-        { key: "fsw" as ProgramKey, label: "FSW", enabled: false },
-        { key: "pnp" as ProgramKey, label: "PNP", enabled: false },
+        { key: "general" as const, label: "General" },
+        { key: "category" as const, label: "Category" },
+        { key: "programs" as const, label: "Programs" },
       ] as const,
     []
   );
 
+  const [activeSimulatorTab, setActiveSimulatorTab] =
+    useState<SimulatorTopTabKey>("general");
+
+  useEffect(() => {
+    if (programTarget === "category") {
+      setActiveSimulatorTab("category");
+      return;
+    }
+
+    if (programTarget === "general") {
+      setActiveSimulatorTab("general");
+      return;
+    }
+
+    setActiveSimulatorTab("programs");
+  }, [programTarget]);
+
   const activeIndex = useMemo(() => {
-    const i = programOptions.findIndex((o) => o.key === programTarget);
+    const i = programOptions.findIndex((o) => o.key === activeSimulatorTab);
     return i >= 0 ? i : 0;
-  }, [programOptions, programTarget]);
+  }, [activeSimulatorTab, programOptions]);
 
   const availableOpportunities = useMemo(() => {
     if (!baseProfile) return [];
@@ -1632,6 +1651,34 @@ export default function SimulatorMVP() {
       storedProfile?.baseProfile.rawForm,
     ]
   );
+
+  const handleSimulatorTabChange = useCallback((tab: SimulatorTopTabKey) => {
+    setActiveSimulatorTab(tab);
+
+    if (tab === "programs") {
+      setHighlightEligibility(true);
+      eligibilitySectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    setHighlightEligibility(false);
+    setProgramTarget(tab as ProgramKey);
+  }, []);
+
+  useEffect(() => {
+    if (!highlightEligibility) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setHighlightEligibility(false);
+    }, 2200);
+
+    return () => window.clearTimeout(timer);
+  }, [highlightEligibility]);
 
   const aiPreview = useMemo(() => {
     const bestMove =
@@ -2217,8 +2264,8 @@ export default function SimulatorMVP() {
               benchSourceLabel={bench ? `Live source: ${benchMeta.source}` : "Benchmark fallback active"}
               programOptions={programOptions}
               activeIndex={activeIndex}
-              programTarget={programTarget}
-              onProgramChange={setProgramTarget}
+              activeKey={activeSimulatorTab}
+              onProgramChange={handleSimulatorTabChange}
             />
           </GlassPanel>
         </MotionReveal>
@@ -2323,7 +2370,7 @@ export default function SimulatorMVP() {
                   <div>
                     <div className="text-sm font-semibold text-white">Detailed market compare</div>
                     <div className="mt-1 text-xs text-white/55">
-                      Compare General vs Category only when you want more context.
+                      Compare General vs Category for market context, or open Programs to review your federal eligibility baseline.
                     </div>
                   </div>
 
@@ -2473,6 +2520,8 @@ export default function SimulatorMVP() {
                 <ProfileSummaryPanel
                   profileSummaryItems={profileSummaryItems}
                   expressEntryEligibility={expressEntryEligibility}
+                  eligibilityAnchorRef={eligibilitySectionRef}
+                  highlightEligibility={highlightEligibility}
                   availableOpportunities={availableOpportunities}
                   scenarioToggles={selectedOpportunityLookup}
                   activeToggleCount={activeToggleCount}
@@ -3021,8 +3070,9 @@ export default function SimulatorMVP() {
             {/* footer hint */}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 py-3">
               <div className="text-xs text-white/60">
-                Tip: Switch between <span className="font-semibold text-white/80">General</span> and{" "}
-                <span className="font-semibold text-white/80">Category</span> to see different market cutoffs.
+                Tip: Switch between <span className="font-semibold text-white/80">General</span>,{" "}
+                <span className="font-semibold text-white/80">Category</span>, and{" "}
+                <span className="font-semibold text-white/80">Programs</span> to compare cutoffs and review eligibility context.
               </div>
               <div className="text-xs text-white/50">v2.3 • Benchmark + Strategy</div>
             </div>

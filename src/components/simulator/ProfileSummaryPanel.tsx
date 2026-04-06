@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { RefObject } from "react";
 import type {
   ExpressEntryEligibilityItem,
   ExpressEntryEligibilityStatus,
@@ -21,6 +22,8 @@ type OpportunityItem = {
 type ProfileSummaryPanelProps = {
   profileSummaryItems: ProfileSummaryItem[];
   expressEntryEligibility: ExpressEntryEligibilityItem[];
+  eligibilityAnchorRef?: RefObject<HTMLDivElement | null>;
+  highlightEligibility?: boolean;
   availableOpportunities: OpportunityItem[];
   scenarioToggles: Record<string, boolean>;
   activeToggleCount: number;
@@ -53,6 +56,8 @@ function statusLabel(status: ExpressEntryEligibilityStatus) {
 export default function ProfileSummaryPanel({
   profileSummaryItems,
   expressEntryEligibility,
+  eligibilityAnchorRef,
+  highlightEligibility = false,
   availableOpportunities,
   scenarioToggles,
   activeToggleCount,
@@ -61,7 +66,15 @@ export default function ProfileSummaryPanel({
 }: ProfileSummaryPanelProps) {
   return (
     <div className="space-y-4">
-      <div className="rounded-[28px] border border-white/10 bg-black/20 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div
+        ref={eligibilityAnchorRef}
+        className={[
+          "rounded-[28px] border bg-black/20 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition duration-300",
+          highlightEligibility
+            ? "border-cyan-400/35 ring-1 ring-cyan-400/25"
+            : "border-white/10",
+        ].join(" ")}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">Profile state</div>
