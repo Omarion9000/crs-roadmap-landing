@@ -2151,7 +2151,7 @@ export default function SimulatorMVP() {
   const hasServerRoadmapContinuity = !!authUser && userPlan === "pro" && roadmapHistory.length > 0;
 
   return (
-    <div className="relative min-h-[calc(100vh-0px)] overflow-hidden bg-[#070A12] text-white">
+    <div className="relative min-h-[calc(100vh-0px)] overflow-x-hidden bg-[#070A12] text-white">
       {/* background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-b from-[#070A12] via-[#070A12] to-black" />
@@ -2435,7 +2435,7 @@ export default function SimulatorMVP() {
             variants={fadeUp}
             className="group self-start lg:sticky lg:top-28"
           >
-          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+          <GlassPanel className="rounded-[34px] p-5 transition duration-300 hover:border-white/20">
             <ProfileSummaryPanel
               profileSummaryItems={profileSummaryItems}
               availableOpportunities={availableOpportunities}
