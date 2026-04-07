@@ -260,7 +260,7 @@ export default function Navbar() {
     <header className="fixed left-0 top-0 z-50 w-full">
       <div className="mx-auto max-w-7xl px-6 py-1">
         <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.04] px-6 py-0.5 shadow-[0_0_40px_rgba(59,130,246,0.08)] backdrop-blur-2xl md:py-1">
-          <Link href="/" className="group relative flex min-w-[240px] items-center md:min-w-[280px]">
+          <Link href="/" className="group relative flex min-w-0 items-center md:min-w-[280px]">
             <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-blue-500/5 opacity-70 blur-2xl" />
             <Image
               src="/logo-prave.png"
@@ -269,24 +269,25 @@ export default function Navbar() {
               height={96}
               priority
               className="
-                h-[150px] md:h-[178px]
+                h-[110px] md:h-[178px]
                 w-auto
                 object-contain
                 transition duration-300
-                -my-6 md:-my-8
+                -my-4 md:-my-8
                 group-hover:scale-[1.05]
                 group-hover:drop-shadow-[0_0_28px_rgba(59,130,246,0.7)]
               "
             />
-            <span className="ml-2 text-sm font-medium tracking-[0.04em] text-white/60">
+            <span className="ml-2 hidden text-sm font-medium tracking-[0.04em] text-white/60 md:inline">
               Your Roadmap to PR
             </span>
           </Link>
 
           <nav className="flex items-center gap-3">
+            {/* Desktop-only nav links */}
             <Link
               href="/simulator"
-              className={`rounded-xl px-4 py-2 text-sm transition ${
+              className={`hidden rounded-xl px-4 py-2 text-sm transition md:inline-flex ${
                 isActive("/simulator")
                   ? "bg-blue-500/20 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.4)]"
                   : "text-white/75 hover:bg-white/10 hover:text-white"
@@ -298,7 +299,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
-                className={`rounded-xl px-4 py-2 text-sm transition ${
+                className={`hidden rounded-xl px-4 py-2 text-sm transition md:inline-flex ${
                   isActive("/dashboard")
                     ? "bg-purple-500/20 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)]"
                     : "text-white/75 hover:bg-white/10 hover:text-white"
@@ -310,7 +311,7 @@ export default function Navbar() {
 
             <Link
               href="/"
-              className={`rounded-xl px-4 py-2 text-sm transition ${
+              className={`hidden rounded-xl px-4 py-2 text-sm transition md:inline-flex ${
                 isActive("/")
                   ? "bg-white/10 text-white"
                   : "text-white/65 hover:bg-white/10 hover:text-white"
@@ -319,7 +320,8 @@ export default function Navbar() {
               Home
             </Link>
 
-            <div className="ml-2 flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-1">
+            {/* Desktop-only language toggle */}
+            <div className="ml-2 hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-1 md:flex">
               <button
                 type="button"
                 onClick={() => setLanguage("en")}
@@ -340,8 +342,9 @@ export default function Navbar() {
               </button>
             </div>
 
+            {/* Desktop-only identity label */}
             {isAuthenticated && identityLabel ? (
-              <div className="ml-2 flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-medium text-white shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_40px_-28px_rgba(59,130,246,0.45)] backdrop-blur-xl">
+              <div className="ml-2 hidden items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-medium text-white shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_40px_-28px_rgba(59,130,246,0.45)] backdrop-blur-xl md:flex">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-300/20 bg-black/25 text-blue-100/90">
                   <svg
                     viewBox="0 0 20 20"
@@ -359,10 +362,11 @@ export default function Navbar() {
               </div>
             ) : null}
 
+            {/* Always visible: Sign in / Sign out */}
             {!isAuthenticated ? (
               <Link
                 href="/login"
-                className="ml-2 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300 shadow-[0_16px_32px_-24px_rgba(34,197,94,0.5)] transition hover:bg-green-500/20 hover:text-white"
+                className="rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300 shadow-[0_16px_32px_-24px_rgba(34,197,94,0.5)] transition hover:bg-green-500/20 hover:text-white"
               >
                 Sign in
               </Link>
@@ -370,7 +374,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="ml-2 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 shadow-[0_16px_32px_-24px_rgba(239,68,68,0.45)] transition hover:bg-red-500/20 hover:text-white"
+                className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 shadow-[0_16px_32px_-24px_rgba(239,68,68,0.45)] transition hover:bg-red-500/20 hover:text-white"
               >
                 Sign out
               </button>

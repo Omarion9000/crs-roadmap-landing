@@ -380,7 +380,7 @@ export default function PremiumHome() {
                     <div className="mt-3 text-xl font-semibold text-white">
                       IELTS to CLB 9
                     </div>
-                    <div className="mt-4 flex items-end justify-between gap-4">
+                    <div className="mt-4 flex flex-wrap items-end gap-3">
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
                           Projected score
