@@ -31,6 +31,7 @@ import { buildRecommendationSummary } from "@/lib/strategy/recommendationSummary
 import { buildBillingHref, buildLoginHref, buildUpgradeEntryHref, upgradeSuccessMessage } from "@/lib/upgrade";
 import { greetingLabel, roadmapDisplayName } from "@/lib/personalization";
 import type { AIStrategyRecommendation } from "@/types/ai-strategy";
+import { useLanguage } from "@/lib/i18n/context";
 
 const PENDING_PROFILE_KEY = "crs_pending_profile";
 
@@ -854,7 +855,7 @@ function OpportunitySkeletonCard({ topTier = false }: { topTier?: boolean }) {
 export default function SimulatorMVP() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [lang, setLang] = useState<Lang>("en");
+  const { lang, setLang, t } = useLanguage();
 
   const [showMarketDetails, setShowMarketDetails] = useState<boolean>(false);
   const [compareMode, setCompareMode] = useState<boolean>(true);
@@ -1004,41 +1005,6 @@ export default function SimulatorMVP() {
     previousBaseProfileOwnerKeyRef.current = baseProfileOwnerKey;
   }, [authUserLoading, baseProfileOwnerKey]);
 
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem("crs_ui_lang");
-      if (saved === "en" || saved === "es") {
-        setLang(saved);
-      }
-    } catch {
-      // ignore local storage failures
-    }
-
-    const syncLanguage = (event: Event) => {
-      const nextLang =
-        event instanceof CustomEvent && (event.detail === "en" || event.detail === "es")
-          ? event.detail
-          : null;
-
-      if (nextLang) {
-        setLang(nextLang);
-      }
-    };
-
-    window.addEventListener("crs-ui-lang-change", syncLanguage);
-
-    return () => {
-      window.removeEventListener("crs-ui-lang-change", syncLanguage);
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("crs_ui_lang", lang);
-    } catch {
-      // ignore local storage failures
-    }
-  }, [lang]);
 
   const baseProfile = useMemo(
     () => (storedProfile ? mapStoredDataToProfile(storedProfile) : null),
@@ -2319,26 +2285,26 @@ export default function SimulatorMVP() {
                 /* ── Anonymous: prompt sign-in ── */
                 <div className="max-w-2xl p-6">
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                    Sign in to continue
+                    {t("sim_anon_eyebrow")}
                   </div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                    Sign in to save your profile and see your full roadmap.
+                    {t("sim_anon_title")}
                   </div>
                   <div className="mt-3 text-sm leading-6 text-white/60">
-                    Your simulator uses a base CRS profile to rank realistic improvement paths and build a prioritized strategy. Sign in once to save yours and keep it across sessions.
+                    {t("sim_anon_body")}
                   </div>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <Link
                       href="/login?returnTo=/simulator"
                       className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                     >
-                      Sign in with email
+                      {t("sim_anon_cta")}
                     </Link>
                     <Link
                       href="/crs-calculator"
                       className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                     >
-                      Check my CRS score first
+                      {t("sim_anon_secondary")}
                     </Link>
                   </div>
                 </div>
@@ -2346,23 +2312,23 @@ export default function SimulatorMVP() {
                 /* ── Authenticated, no profile yet: go to calculator ── */
                 <div className="max-w-2xl p-6">
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                    Build your profile first
+                    {t("sim_no_profile_eyebrow")}
                   </div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                    Start with the calculator so we can personalize your simulator and roadmap.
+                    {t("sim_no_profile_title")}
                   </div>
                   <div className="mt-3 text-sm leading-6 text-white/60">
-                    Your simulator uses the base CRS profile from step one to rank realistic opportunities, preview strategy moves, and save a roadmap that actually reflects your situation.
+                    {t("sim_no_profile_body")}
                   </div>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <Link
                       href="/crs-calculator"
                       className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                     >
-                      Go to calculator
+                      {t("sim_no_profile_cta")}
                     </Link>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
-                      Free preview active
+                      {t("free_preview")}
                     </span>
                   </div>
                 </div>
@@ -2376,20 +2342,20 @@ export default function SimulatorMVP() {
             <GlassPanel className="rounded-[32px]">
               <div className="max-w-2xl p-6">
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                  Returning roadmap continuity
+                  {t("sim_returning_eyebrow")}
                 </div>
                 <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                  Your saved roadmap history is ready to restore.
+                  {t("sim_returning_title")}
                 </div>
                 <div className="mt-4 text-sm leading-7 text-white/68">
-                  Open your dashboard or restore a saved roadmap below to bring your latest profile and AI layer back into the simulator.
+                  {t("sim_returning_body")}
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/dashboard"
                     className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                   >
-                    Open dashboard
+                    {t("sim_returning_dashboard")}
                   </Link>
                   <Link
                     href={
@@ -2399,7 +2365,7 @@ export default function SimulatorMVP() {
                     }
                     className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
-                    Restore latest roadmap
+                    {t("sim_returning_restore")}
                   </Link>
                 </div>
               </div>

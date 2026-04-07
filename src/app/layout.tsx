@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/next";
+import { LanguageProvider } from "@/lib/i18n/context";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://prave.ca";
 
@@ -52,14 +53,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased bg-[#070A12]">
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-
-          <div className="flex-1 pt-20 md:pt-24">
-            {children}
+        <LanguageProvider>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <div className="flex-1 pt-20 md:pt-24">
+              {children}
+            </div>
+            <Footer />
           </div>
-          <Footer />
-        </div>
+        </LanguageProvider>
         <Analytics />
       </body>
     </html>

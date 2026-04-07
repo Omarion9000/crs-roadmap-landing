@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
 import { getStripeServer } from "@/lib/stripe";
+import { t as tr, type Lang } from "@/lib/i18n/translations";
 
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams?: Promise<{ success?: string; canceled?: string }>;
 }) {
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get("crs_lang")?.value;
+  const lang: Lang = langCookie === "es" ? "es" : "en";
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -85,65 +91,65 @@ export default async function BillingPage({
       <div className="mx-auto max-w-4xl">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
           <div className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">
-            Billing
+            {tr("billing_eyebrow", lang)}
           </div>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Manage your plan
+            {tr("billing_title", lang)}
           </h1>
 
           <p className="mt-3 text-sm text-white/65">
-            Logged in as <span className="font-semibold text-white">{user.email}</span>
+            {tr("billing_logged_as", lang)} <span className="font-semibold text-white">{user.email}</span>
           </p>
 
           <div className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-            Current plan: {normalizedPlan}
+            {tr("billing_current_plan", lang)} {normalizedPlan}
           </div>
 
           {paymentSucceeded ? (
             <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-              Payment successful. Your subscription is active.
+              {tr("billing_payment_success", lang)}
             </div>
           ) : null}
 
           {paymentCanceled ? (
             <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
-              Checkout was canceled. You can try again anytime.
+              {tr("billing_payment_canceled", lang)}
             </div>
           ) : null}
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-black/20 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                Free
+                {tr("billing_free_name", lang)}
               </div>
-              <div className="mt-3 text-2xl font-bold">$0</div>
+              <div className="mt-3 text-2xl font-bold">{tr("billing_free_price", lang)}</div>
               <ul className="mt-4 space-y-2 text-sm text-white/70">
-                <li>• Simulator preview</li>
-                <li>• Basic scenario testing</li>
-                <li>• No roadmap saving</li>
+                <li>• {tr("billing_free_f1", lang)}</li>
+                <li>• {tr("billing_free_f2", lang)}</li>
+                <li>• {tr("billing_free_f3", lang)}</li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                Pro
+                {tr("billing_pro_name", lang)}
               </div>
-              <div className="mt-3 text-2xl font-bold">$9/mo</div>
+              <div className="mt-3 text-2xl font-bold">{tr("billing_pro_price", lang)}</div>
               <div className="mt-2 text-xs font-medium text-emerald-100/80">
-                Early access price • future price $19/mo
+                {tr("billing_pro_note", lang)}
               </div>
               <ul className="mt-4 space-y-2 text-sm text-white/80">
-                <li>• Save unlimited roadmaps</li>
-                <li>• Load and manage history</li>
-                <li>• Dashboard insights</li>
-                <li>• Future AI strategy features</li>
+                <li>• {tr("billing_pro_f1", lang)}</li>
+                <li>• {tr("billing_pro_f2", lang)}</li>
+                <li>• {tr("billing_pro_f3", lang)}</li>
+                <li>• {tr("billing_pro_f4", lang)}</li>
               </ul>
 
               {normalizedPlan === "pro" ? (
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <div className="inline-flex items-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200">
-                    You’re on Pro
+                    {tr("billing_on_pro", lang)}
                   </div>
 
                   <form action="/api/stripe/portal" method="POST">
@@ -151,7 +157,7 @@ export default async function BillingPage({
                       type="submit"
                       className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                     >
-                      Manage subscription
+                      {tr("billing_manage", lang)}
                     </button>
                   </form>
                 </div>
@@ -161,7 +167,7 @@ export default async function BillingPage({
                     type="submit"
                     className="mt-6 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
                   >
-                    Upgrade to Pro
+                    {tr("billing_upgrade", lang)}
                   </button>
                 </form>
               )}
@@ -173,7 +179,7 @@ export default async function BillingPage({
               href="/dashboard"
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Back to Dashboard
+              {tr("billing_back", lang)}
             </Link>
           </div>
         </div>

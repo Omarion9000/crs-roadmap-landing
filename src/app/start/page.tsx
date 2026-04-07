@@ -1,35 +1,23 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/context";
 
-export const metadata: Metadata = {
-  title: "Get Started",
-};
-
-const steps = [
-  {
-    number: "1",
-    color: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300",
-    bar: "bg-cyan-400",
-    title: "Enter your profile",
-    description: "Answer a few quick questions about your education, language scores, and work experience.",
-  },
-  {
-    number: "2",
-    color: "border-blue-400/30 bg-blue-400/10 text-blue-300",
-    bar: "bg-blue-400",
-    title: "See your strongest move",
-    description: "The simulator ranks every improvement path by impact so you know exactly what to prioritize.",
-  },
-  {
-    number: "3",
-    color: "border-violet-400/30 bg-violet-400/10 text-violet-300",
-    bar: "bg-violet-400",
-    title: "Unlock your full roadmap",
-    description: "Go deeper with an AI-generated strategy, execution order, and saved continuity on Pro.",
-  },
-];
+const STEP_STYLES = [
+  { number: "1", color: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300", bar: "bg-cyan-400" },
+  { number: "2", color: "border-blue-400/30 bg-blue-400/10 text-blue-300", bar: "bg-blue-400" },
+  { number: "3", color: "border-violet-400/30 bg-violet-400/10 text-violet-300", bar: "bg-violet-400" },
+] as const;
 
 export default function StartPage() {
+  const { t } = useLanguage();
+
+  const steps = [
+    { ...STEP_STYLES[0], title: t("start_step_1_title"), description: t("start_step_1_desc") },
+    { ...STEP_STYLES[1], title: t("start_step_2_title"), description: t("start_step_2_desc") },
+    { ...STEP_STYLES[2], title: t("start_step_3_title"), description: t("start_step_3_desc") },
+  ];
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -42,13 +30,13 @@ export default function StartPage() {
         {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
-            Empieza aquí
+            {t("start_eyebrow")}
           </div>
           <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">
-            Toma 2 minutos.
+            {t("start_title")}
           </h1>
           <p className="mt-4 text-base leading-7 text-white/58">
-            Tres pasos para pasar de no saber qué hacer a tener un roadmap claro hacia tu PR.
+            {t("start_subtitle")}
           </p>
         </div>
 
@@ -86,12 +74,12 @@ export default function StartPage() {
             href="/crs-calculator"
             className="rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-[0_18px_44px_-18px_rgba(255,255,255,0.5)] transition hover:bg-gray-100"
           >
-            Start now
+            {t("start_cta")}
           </Link>
           <span className="text-sm text-white/40">
-            Already know your score?{" "}
+            {t("start_already_know")}{" "}
             <Link href="/simulator" className="text-white/70 underline-offset-2 hover:text-white hover:underline">
-              Go to simulator
+              {t("start_go_simulator")}
             </Link>
           </span>
         </div>

@@ -13,6 +13,7 @@ import {
   readStoredBaseProfile,
 } from "@/lib/crs/baseProfile";
 import { getPreferredName, normalizePreferredName } from "@/lib/personalization";
+import { useLanguage } from "@/lib/i18n/context";
 
 type AuthMeResponse =
   | { ok: true; user: { id: string; email: string; preferred_name?: string } }
@@ -28,22 +29,11 @@ const REMOTE_NAME_CACHE_KEY = "crs_remote_preferred_name";
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { lang: uiLang, setLang, t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [profileStateVersion, setProfileStateVersion] = useState(0);
   const [remotePreferredName, setRemotePreferredName] = useState<string | null>(null);
   const [remoteIdentity, setRemoteIdentity] = useState<RemoteIdentity | null>(null);
-  const [uiLang, setUiLang] = useState<"en" | "es">(() => {
-    if (typeof window === "undefined") {
-      return "en";
-    }
-
-    try {
-      const saved = window.localStorage.getItem("crs_ui_lang");
-      return saved === "en" || saved === "es" ? saved : "en";
-    } catch {
-      return "en";
-    }
-  });
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -235,16 +225,7 @@ export default function Navbar() {
     };
   }, [user]);
 
-  const setLanguage = (nextLang: "en" | "es") => {
-    setUiLang(nextLang);
-
-    try {
-      window.localStorage.setItem("crs_ui_lang", nextLang);
-      window.dispatchEvent(new CustomEvent("crs-ui-lang-change", { detail: nextLang }));
-    } catch {
-      // ignore client storage failures
-    }
-  };
+  const setLanguage = (nextLang: "en" | "es") => setLang(nextLang);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -279,7 +260,7 @@ export default function Navbar() {
               "
             />
             <span className="ml-2 hidden text-sm font-medium tracking-[0.04em] text-white/60 md:inline">
-              Your Roadmap to PR
+              {t("nav_tagline")}
             </span>
           </Link>
 
@@ -293,7 +274,7 @@ export default function Navbar() {
                   : "text-white/75 hover:bg-white/10 hover:text-white"
               }`}
             >
-              Simulator
+              {t("nav_simulator")}
             </Link>
 
             {isAuthenticated ? (
@@ -305,7 +286,7 @@ export default function Navbar() {
                     : "text-white/75 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                Dashboard
+                {t("nav_dashboard")}
               </Link>
             ) : null}
 
@@ -317,7 +298,7 @@ export default function Navbar() {
                   : "text-white/65 hover:bg-white/10 hover:text-white"
               }`}
             >
-              Home
+              {t("nav_home")}
             </Link>
 
             {/* Desktop-only language toggle */}
@@ -368,7 +349,7 @@ export default function Navbar() {
                 href="/login"
                 className="rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300 shadow-[0_16px_32px_-24px_rgba(34,197,94,0.5)] transition hover:bg-green-500/20 hover:text-white"
               >
-                Sign in
+                {t("nav_sign_in")}
               </Link>
             ) : (
               <button
@@ -376,7 +357,7 @@ export default function Navbar() {
                 onClick={handleLogout}
                 className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 shadow-[0_16px_32px_-24px_rgba(239,68,68,0.45)] transition hover:bg-red-500/20 hover:text-white"
               >
-                Sign out
+                {t("nav_sign_out")}
               </button>
             )}
           </nav>

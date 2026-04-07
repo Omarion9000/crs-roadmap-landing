@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
+import { useLanguage } from "@/lib/i18n/context";
 
 type YesNo = "yes" | "no" | "";
 
@@ -637,6 +638,7 @@ const secondLanguage = languageValid
 }
 
 export default function CRSCalculatorPage() {
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
 
   const [form, setForm] = useState<CalculatorData>({
@@ -1320,15 +1322,15 @@ export default function CRSCalculatorPage() {
         return (
           <div className="space-y-8">
             <SectionTitle
-              eyebrow="Step 7"
-              title="Results overview"
-              subtitle="This screen now shows a real CRS preview for core factors already connected."
+              eyebrow={`${t("calc_step_label")} 7`}
+              title={t("calc_results_title")}
+              subtitle={t("calc_results_subtitle")}
             />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-6">
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/70">
-                  Estimated CRS
+                  {t("calc_estimated_crs")}
                 </div>
                 <div className="mt-3 text-4xl font-semibold text-white">
                   {crsPreview.total}
@@ -1340,10 +1342,10 @@ export default function CRSCalculatorPage() {
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
-                  Profile mode
+                  {t("calc_profile_mode")}
                 </div>
                 <div className="mt-3 text-2xl font-semibold text-white">
-                  {crsPreview.treatedAsNoSpouse ? "Without spouse points" : "With spouse points"}
+                  {crsPreview.treatedAsNoSpouse ? t("calc_without_spouse") : t("calc_with_spouse")}
                 </div>
                 <p className="mt-2 text-sm text-white/65">
                   Based on marital status, spouse accompaniment, and spouse PR/citizen status.
@@ -1353,19 +1355,19 @@ export default function CRSCalculatorPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-                <div>Age points: {crsPreview.age}</div>
-                <div>Education points: {crsPreview.education}</div>
-                <div>First language points: {crsPreview.firstLanguage}</div>
-                <div>Second language points: {crsPreview.secondLanguage}</div>
-                <div>Canadian experience points: {crsPreview.canadianExp}</div>
+                <div>{t("calc_age_pts")} {crsPreview.age}</div>
+                <div>{t("calc_edu_pts")} {crsPreview.education}</div>
+                <div>{t("calc_lang1_pts")} {crsPreview.firstLanguage}</div>
+                <div>{t("calc_lang2_pts")} {crsPreview.secondLanguage}</div>
+                <div>{t("calc_can_exp_pts")} {crsPreview.canadianExp}</div>
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-                <div>Spouse education points: {crsPreview.spouseEducation}</div>
-                <div>Spouse language points: {crsPreview.spouseLanguage}</div>
-                <div>Spouse Canadian experience points: {crsPreview.spouseCanadianExp}</div>
-                <div>Additional points: {crsPreview.additional}</div>
-                <div className="mt-2 font-semibold text-white">Total: {crsPreview.total}</div>
+                <div>{t("calc_spouse_edu_pts")} {crsPreview.spouseEducation}</div>
+                <div>{t("calc_spouse_lang_pts")} {crsPreview.spouseLanguage}</div>
+                <div>{t("calc_spouse_can_pts")} {crsPreview.spouseCanadianExp}</div>
+                <div>{t("calc_additional_pts")} {crsPreview.additional}</div>
+                <div className="mt-2 font-semibold text-white">{t("calc_total")} {crsPreview.total}</div>
               </div>
             </div>
 
@@ -1401,10 +1403,10 @@ export default function CRSCalculatorPage() {
             {/* CTA to simulator */}
             <div className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-6">
               <div className="text-sm font-semibold text-white">
-                Your estimated CRS is <span className="text-cyan-200">{crsPreview.total}</span>
+                {t("calc_cta_score")} <span className="text-cyan-200">{crsPreview.total}</span>
               </div>
               <p className="mt-1 text-sm text-white/65">
-                Now see which moves improve your score the most — and in what order.
+                {t("calc_cta_desc")}
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
@@ -1452,13 +1454,13 @@ export default function CRSCalculatorPage() {
                   }}
                   className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                 >
-                  Open simulator →
+                  {t("calc_open_simulator")}
                 </Link>
                 <Link
                   href="/start"
                   className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
-                  Back to start
+                  {t("calc_back_to_start")}
                 </Link>
               </div>
             </div>
@@ -1475,7 +1477,7 @@ export default function CRSCalculatorPage() {
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">
           <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/80">
-            CRS Roadmap
+            {t("calc_eyebrow")}
           </div>
         </div>
 
@@ -1483,10 +1485,10 @@ export default function CRSCalculatorPage() {
           <section className="rounded-[28px] border border-white/10 bg-linear-to-b from-white/8 to-white/4 p-8 shadow-2xl shadow-black/20 backdrop-blur-sm">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="text-sm font-medium text-white/50">
-                Step {currentStep + 1} of {steps.length}
+                {t("calc_step_label")} {currentStep + 1} {t("calc_of_label")} {steps.length}
               </div>
               <div className="text-sm font-medium text-cyan-200/70">
-                {progress}% complete
+                {progress}{t("calc_complete")}
               </div>
             </div>
 
@@ -1506,12 +1508,12 @@ export default function CRSCalculatorPage() {
                 disabled={currentStep === 0}
                 className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Back
+                {t("calc_back")}
               </button>
 
               {!canGoNext() ? (
                 <div className="ml-auto text-xs text-white/45">
-                  Complete the required fields to continue
+                  {t("calc_required_hint")}
                 </div>
               ) : null}
 
@@ -1521,14 +1523,14 @@ export default function CRSCalculatorPage() {
                 disabled={currentStep === steps.length - 1 || !canGoNext()}
                 className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Next
+                {t("calc_next")}
               </button>
             </div>
           </section>
 
           <aside className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">
-              Live summary
+              {t("calc_live_summary")}
             </div>
 
             <div className="mt-5 grid gap-3 text-sm text-white/75">

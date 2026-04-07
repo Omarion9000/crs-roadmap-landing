@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserPlan } from "@/lib/subscriptions";
+import { t as tr, type Lang } from "@/lib/i18n/translations";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,10 @@ function programLabel(program: string) {
 }
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get("crs_lang")?.value;
+  const lang: Lang = langCookie === "es" ? "es" : "en";
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -94,17 +100,17 @@ export default async function DashboardPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">
-              Dashboard
+              {tr("dash_eyebrow", lang)}
             </div>
             <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Welcome back
+              {tr("dash_title", lang)}
             </h1>
             <p className="mt-3 text-sm text-white/65">
-              Logged in as <span className="font-semibold text-white">{user.email}</span>
+              {tr("dash_logged_as", lang)} <span className="font-semibold text-white">{user.email}</span>
             </p>
 
             <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-              Current plan: {normalizedPlan}
+              {tr("dash_current_plan", lang)} {normalizedPlan}
             </div>
           </div>
 
@@ -113,13 +119,13 @@ export default async function DashboardPage() {
               href="/simulator"
               className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
             >
-              Open Simulator
+              {tr("dash_open_simulator", lang)}
             </Link>
             <Link
               href="/simulator"
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Load Latest Roadmap
+              {tr("dash_load_roadmap", lang)}
             </Link>
           </div>
         </div>
@@ -127,35 +133,35 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-              Saved roadmaps
+              {tr("dash_saved_roadmaps", lang)}
             </div>
             <div className="mt-3 text-3xl font-bold">{savedCount}</div>
             <div className="mt-2 text-sm text-white/60">
-              Strategies stored for your account.
+              {tr("dash_saved_desc", lang)}
             </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-              Last CRS
+              {tr("dash_last_crs", lang)}
             </div>
             <div className="mt-3 text-3xl font-bold">{lastBaseCrs ?? "—"}</div>
             <div className="mt-2 text-sm text-white/60">
-              {lastRoadmap ? `Program: ${programLabel(lastRoadmap.program_target)}` : "No roadmap saved yet."}
+              {lastRoadmap ? `${tr("dash_program", lang)}: ${programLabel(lastRoadmap.program_target)}` : tr("dash_no_roadmap", lang)}
             </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-              Best next move
+              {tr("dash_best_move", lang)}
             </div>
             <div className="mt-3 text-lg font-semibold text-white">
-              {bestMove?.title ?? "No strategy yet"}
+              {bestMove?.title ?? tr("dash_no_strategy", lang)}
             </div>
             <div className="mt-2 text-sm text-white/60">
               {typeof bestMove?.delta === "number"
-                ? `Estimated gain: +${bestMove.delta} CRS`
-                : "Save a roadmap to see your best recommendation here."}
+                ? `${tr("dash_est_gain", lang)} +${bestMove.delta} CRS`
+                : tr("dash_save_roadmap_hint", lang)}
             </div>
           </div>
         </div>
@@ -163,9 +169,9 @@ export default async function DashboardPage() {
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-white">Latest roadmap</h2>
+              <h2 className="text-xl font-semibold text-white">{tr("dash_latest_title", lang)}</h2>
               <p className="mt-1 text-sm text-white/60">
-                Your most recently saved simulator state.
+                {tr("dash_latest_desc", lang)}
               </p>
             </div>
           </div>
@@ -174,7 +180,7 @@ export default async function DashboardPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                  Program
+                  {tr("dash_program", lang)}
                 </div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {programLabel(lastRoadmap.program_target)}
@@ -183,7 +189,7 @@ export default async function DashboardPage() {
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                  Baseline CRS
+                  {tr("dash_baseline_crs", lang)}
                 </div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {lastBaseCrs ?? "—"}
@@ -192,7 +198,7 @@ export default async function DashboardPage() {
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                  English / French
+                  {tr("dash_english_french", lang)}
                 </div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {typeof lastRoadmap.profile_snapshot?.ieltsClb === "number"
@@ -207,7 +213,7 @@ export default async function DashboardPage() {
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                  Last updated
+                  {tr("dash_last_updated", lang)}
                 </div>
                 <div className="mt-2 text-sm font-semibold text-white">
                   {formatDate(lastRoadmap.created_at)}
@@ -216,15 +222,15 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/20 p-6 text-sm text-white/60">
-              You have not saved any roadmaps yet. Open the simulator and save your first strategy.
+              {tr("dash_no_roadmaps", lang)}
             </div>
           )}
         </div>
 
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-          <h2 className="text-xl font-semibold text-white">Recent roadmaps</h2>
+          <h2 className="text-xl font-semibold text-white">{tr("dash_recent_title", lang)}</h2>
           <p className="mt-1 text-sm text-white/60">
-            A quick overview of your latest saved simulator strategies.
+            {tr("dash_recent_desc", lang)}
           </p>
 
           {roadmaps.length > 0 ? (
@@ -245,8 +251,8 @@ export default async function DashboardPage() {
 
                   <div className="text-sm text-white/65">
                     {roadmap.top_scenarios?.[0]?.title
-                      ? `Top move: ${roadmap.top_scenarios[0].title}`
-                      : "No ranked move saved"}
+                      ? `${tr("dash_top_move", lang)} ${roadmap.top_scenarios[0].title}`
+                      : tr("dash_no_ranked", lang)}
                   </div>
                 </div>
               ))}

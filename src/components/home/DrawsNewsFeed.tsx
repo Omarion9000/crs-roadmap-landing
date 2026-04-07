@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/context";
 
 type DrawItem = {
   date: string;
@@ -37,35 +38,32 @@ function programColor(program: string) {
   return "text-white/60 border-white/15 bg-white/5";
 }
 
-function DrawCard({ draw, isLatest }: { draw: DrawItem; isLatest: boolean }) {
+function DrawCard({ draw, isLatest, newLabel, minScoreLabel, invitationsLabel, sourceLabel, drawLabel }: { draw: DrawItem; isLatest: boolean; newLabel: string; minScoreLabel: string; invitationsLabel: string; sourceLabel: string; drawLabel: string }) {
   const pillClass = programColor(draw.program);
   const irccUrl =
     "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations.html";
 
   return (
     <div className="relative flex w-72 shrink-0 flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.07] sm:w-80">
-      {/* NEW badge */}
       {(draw.is_new || isLatest) && (
         <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
-          NEW
+          {newLabel}
         </span>
       )}
 
-      {/* Date + draw number */}
       <div className="pr-12">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
-          {draw.draw_number ? `Draw #${draw.draw_number} · ` : ""}{formatDate(draw.date)}
+          {draw.draw_number ? `${drawLabel} #${draw.draw_number} · ` : ""}{formatDate(draw.date)}
         </div>
         <div className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${pillClass}`}>
           {draw.program}
         </div>
       </div>
 
-      {/* Score */}
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-            Minimum CRS
+            {minScoreLabel}
           </div>
           <div className="mt-1.5 text-4xl font-bold tracking-tight text-white">
             {draw.cutoff}
@@ -73,7 +71,7 @@ function DrawCard({ draw, isLatest }: { draw: DrawItem; isLatest: boolean }) {
         </div>
         <div className="text-right">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-            Invitations
+            {invitationsLabel}
           </div>
           <div className="mt-1.5 text-xl font-semibold text-white/80">
             {draw.invitations.toLocaleString()}
@@ -81,7 +79,6 @@ function DrawCard({ draw, isLatest }: { draw: DrawItem; isLatest: boolean }) {
         </div>
       </div>
 
-      {/* Footer link */}
       <Link
         href={irccUrl}
         target="_blank"
@@ -91,7 +88,7 @@ function DrawCard({ draw, isLatest }: { draw: DrawItem; isLatest: boolean }) {
         <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3" aria-hidden="true">
           <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 1h6m0 0v6m0-6L8 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        Source: canada.ca / IRCC
+        {sourceLabel}
       </Link>
     </div>
   );
@@ -117,6 +114,7 @@ function SkeletonCard() {
 }
 
 export default function DrawsNewsFeed() {
+  const { t } = useLanguage();
   const [draws, setDraws] = useState<DrawItem[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -151,10 +149,10 @@ export default function DrawsNewsFeed() {
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/65">
-              Live draws
+              {t("draws_eyebrow")}
             </div>
             <h2 className="mt-1.5 text-lg font-semibold text-white">
-              Latest Express Entry results
+              {t("draws_title")}
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -187,7 +185,15 @@ export default function DrawsNewsFeed() {
             ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
             : draws.map((draw, i) => (
                 <div key={`${draw.date}-${draw.program}`} style={{ scrollSnapAlign: "start" }}>
-                  <DrawCard draw={draw} isLatest={i === 0} />
+                  <DrawCard
+                    draw={draw}
+                    isLatest={i === 0}
+                    newLabel={t("draws_new")}
+                    minScoreLabel={t("draws_min_score")}
+                    invitationsLabel={t("draws_invitations")}
+                    sourceLabel={t("draws_source")}
+                    drawLabel={t("draws_draw")}
+                  />
                 </div>
               ))}
         </div>
