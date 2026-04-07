@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { buildUpgradeEntryHref } from "@/lib/upgrade";
+import DrawsNewsFeed from "@/components/home/DrawsNewsFeed";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -417,6 +418,9 @@ export default function PremiumHome() {
           </motion.div>
         </div>
       </section>
+
+      {/* ── LIVE DRAWS FEED ── */}
+      <DrawsNewsFeed />
 
       {/* ── THE REAL PROBLEM ── */}
       <Section
