@@ -32,6 +32,8 @@ import { buildBillingHref, buildLoginHref, buildUpgradeEntryHref, upgradeSuccess
 import { greetingLabel, roadmapDisplayName } from "@/lib/personalization";
 import type { AIStrategyRecommendation } from "@/types/ai-strategy";
 
+const PENDING_PROFILE_KEY = "crs_pending_profile";
+
 // ---------- UI helpers ----------
 function deltaLabel(delta: number) {
   if (delta >= 500) return "Massive";
@@ -1875,6 +1877,46 @@ export default function SimulatorMVP() {
     setSelectedOpportunityIds([]);
   }, []);
 
+  // Apply a pending profile saved by the CRS calculator before login
+  useEffect(() => {
+    if (authUserLoading || !authUser || !baseProfileOwnerKey || storedProfile) return;
+
+    try {
+      const raw = window.localStorage.getItem(PENDING_PROFILE_KEY);
+      if (!raw) return;
+
+      const pending = JSON.parse(raw) as {
+        currentCrs?: number;
+        englishClb?: number;
+        canadianExperienceYears?: number;
+        hasJobOffer?: boolean;
+        hasPnp?: boolean;
+      } | null;
+
+      const crs = typeof pending?.currentCrs === "number" ? pending.currentCrs : 0;
+      if (crs <= 0) return;
+
+      applyStoredProfile({
+        createdAt: new Date().toISOString(),
+        ownerKey: baseProfileOwnerKey,
+        baseProfile: {
+          currentCrs: crs,
+          englishClb: typeof pending?.englishClb === "number" ? pending.englishClb : 0,
+          canadianExperienceYears:
+            typeof pending?.canadianExperienceYears === "number"
+              ? pending.canadianExperienceYears
+              : 0,
+          hasJobOffer: !!pending?.hasJobOffer,
+          hasPnp: !!pending?.hasPnp,
+        },
+      });
+
+      window.localStorage.removeItem(PENDING_PROFILE_KEY);
+    } catch {
+      // ignore
+    }
+  }, [authUserLoading, authUser, baseProfileOwnerKey, storedProfile, applyStoredProfile]);
+
   const roadmapSnapshotToStoredProfile = useCallback((
     snapshot: RoadmapHistoryItem["profile_snapshot"]
   ): StoredBaseProfilePayload => {
@@ -2273,29 +2315,58 @@ export default function SimulatorMVP() {
         {baseProfileReady && !storedProfile && !hasServerRoadmapContinuity ? (
           <MotionReveal delay={0.08}>
             <GlassPanel className="rounded-[32px]">
-              <div className="max-w-2xl p-6">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
-                Build your profile first
-              </div>
-              <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                Start with the calculator so we can personalize your simulator and roadmap.
-              </div>
-              <div className="mt-3 text-sm leading-6 text-white/60">
-                Your simulator uses the base CRS profile from step one to rank realistic opportunities, preview strategy moves, and save a roadmap that actually reflects your situation.
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/crs-calculator"
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
-                >
-                  Go to calculator
-                </Link>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
-                  Free preview active
-                </span>
-              </div>
-              </div>
+              {!authUser ? (
+                /* ── Anonymous: prompt sign-in ── */
+                <div className="max-w-2xl p-6">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                    Sign in to continue
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                    Sign in to save your profile and see your full roadmap.
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-white/60">
+                    Your simulator uses a base CRS profile to rank realistic improvement paths and build a prioritized strategy. Sign in once to save yours and keep it across sessions.
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/login?returnTo=/simulator"
+                      className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                    >
+                      Sign in with email
+                    </Link>
+                    <Link
+                      href="/crs-calculator"
+                      className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    >
+                      Check my CRS score first
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                /* ── Authenticated, no profile yet: go to calculator ── */
+                <div className="max-w-2xl p-6">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/75">
+                    Build your profile first
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                    Start with the calculator so we can personalize your simulator and roadmap.
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-white/60">
+                    Your simulator uses the base CRS profile from step one to rank realistic opportunities, preview strategy moves, and save a roadmap that actually reflects your situation.
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/crs-calculator"
+                      className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                    >
+                      Go to calculator
+                    </Link>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
+                      Free preview active
+                    </span>
+                  </div>
+                </div>
+              )}
             </GlassPanel>
           </MotionReveal>
         ) : null}

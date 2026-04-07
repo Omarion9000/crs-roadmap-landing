@@ -275,7 +275,7 @@ export default function PremiumHome() {
 
       {/* ── HERO ── */}
       <section className="py-14 lg:py-18">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr] [touch-action:pan-y]">
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -341,7 +341,7 @@ export default function PremiumHome() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="relative"
+            className="relative pointer-events-none lg:pointer-events-auto"
           >
             <div className="absolute inset-0 rounded-[32px] bg-[radial-gradient(circle_at_50%_20%,rgba(59,130,246,0.2),transparent_45%)] blur-2xl" />
             <div className="relative rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_100px_-60px_rgba(59,130,246,0.45)] backdrop-blur-xl">

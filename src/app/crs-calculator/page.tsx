@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
 type YesNo = "yes" | "no" | "";
@@ -1394,6 +1395,71 @@ export default function CRSCalculatorPage() {
               <div>Spouse Canadian experience: {form.spouseCanadianExperience || "—"}</div>
               <div>
                 Spouse language levels: {scoreLabel(form.spouseSpeaking)}, {scoreLabel(form.spouseListening)}, {scoreLabel(form.spouseReading)}, {scoreLabel(form.spouseWriting)}
+              </div>
+            </div>
+
+            {/* CTA to simulator */}
+            <div className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-6">
+              <div className="text-sm font-semibold text-white">
+                Your estimated CRS is <span className="text-cyan-200">{crsPreview.total}</span>
+              </div>
+              <p className="mt-1 text-sm text-white/65">
+                Now see which moves improve your score the most — and in what order.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href="/simulator"
+                  onClick={() => {
+                    try {
+                      const clbFromOption = (opt: string) => {
+                        if (opt === "clb-10-plus") return 10;
+                        if (opt.startsWith("clb-")) return Number(opt.slice(4)) || 0;
+                        return 0;
+                      };
+                      const minClb = [
+                        form.firstSpeaking,
+                        form.firstListening,
+                        form.firstReading,
+                        form.firstWriting,
+                      ].every((s) => s !== "")
+                        ? Math.min(
+                            clbFromOption(form.firstSpeaking),
+                            clbFromOption(form.firstListening),
+                            clbFromOption(form.firstReading),
+                            clbFromOption(form.firstWriting)
+                          )
+                        : 0;
+                      const canExpYears =
+                        form.canadianExperience === "5-or-more"
+                          ? 5
+                          : form.canadianExperience === "none-or-less-than-one"
+                          ? 0
+                          : Number(form.canadianExperience) || 0;
+                      const pending = {
+                        currentCrs: crsPreview.total,
+                        englishClb: minClb,
+                        canadianExperienceYears: canExpYears,
+                        hasJobOffer: form.hasValidJobOffer === "yes",
+                        hasPnp: form.hasProvincialNomination === "yes",
+                      };
+                      window.localStorage.setItem(
+                        "crs_pending_profile",
+                        JSON.stringify(pending)
+                      );
+                    } catch {
+                      // ignore storage failures
+                    }
+                  }}
+                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                >
+                  Open simulator →
+                </Link>
+                <Link
+                  href="/start"
+                  className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Back to start
+                </Link>
               </div>
             </div>
           </div>

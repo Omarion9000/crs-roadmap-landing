@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { Analytics } from "@vercel/analytics/next";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://prave.ca";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
           </div>
           <Footer />
         </div>
+        <Analytics />
       </body>
     </html>
   );
