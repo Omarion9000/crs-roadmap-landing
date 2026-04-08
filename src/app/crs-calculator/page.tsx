@@ -368,6 +368,21 @@ function ScoresGrid({
   );
 }
 
+// ─── CLB numeric helper ──────────────────────────────────────────────────────
+function clbNumeric(clb: ScoreOption): number {
+  switch (clb) {
+    case "clb-10-plus": return 10;
+    case "clb-9":       return 9;
+    case "clb-8":       return 8;
+    case "clb-7":       return 7;
+    case "clb-6":       return 6;
+    case "clb-5":       return 5;
+    case "clb-4":       return 4;
+    case "clb-0-3":     return 3;
+    default:            return 0;
+  }
+}
+
 function isTreatedAsNoSpouse(form: CalculatorData) {
   return (
     (form.maritalStatus !== "married" && form.maritalStatus !== "common-law") ||
@@ -398,152 +413,68 @@ function secondLanguagePointsPerAbility(clb: ScoreOption) {
   return 0;
 }
 
-function cappedSecondLanguageTotal(
-  scores: ScoreOption[],
-  treatedAsNoSpouse: boolean
-) {
-  const raw = scores.reduce(
-    (sum, score) => sum + secondLanguagePointsPerAbility(score),
-    0
-  );
-  return Math.min(raw, treatedAsNoSpouse ? 24 : 22);
+// Official cap for second official language is 22 pts for both with/without spouse
+function cappedSecondLanguageTotal(scores: ScoreOption[]) {
+  const raw = scores.reduce((sum, s) => sum + secondLanguagePointsPerAbility(s), 0);
+  return Math.min(raw, 22);
 }
 
 function agePoints(age: AgeOption, treatedAsNoSpouse: boolean) {
   const withSpouse: Record<Exclude<AgeOption, "">, number> = {
     "17-or-less": 0,
-    "18": 90,
-    "19": 95,
-    "20": 100,
-    "21": 100,
-    "22": 100,
-    "23": 100,
-    "24": 100,
-    "25": 100,
-    "26": 100,
-    "27": 100,
-    "28": 100,
-    "29": 100,
-    "30": 95,
-    "31": 90,
-    "32": 85,
-    "33": 80,
-    "34": 75,
-    "35": 70,
-    "36": 65,
-    "37": 60,
-    "38": 55,
-    "39": 50,
-    "40": 45,
-    "41": 35,
-    "42": 25,
-    "43": 15,
-    "44": 5,
-    "45-or-more": 0,
+    "18": 90,  "19": 95,  "20": 100, "21": 100, "22": 100,
+    "23": 100, "24": 100, "25": 100, "26": 100, "27": 100,
+    "28": 100, "29": 100, "30": 95,  "31": 90,  "32": 85,
+    "33": 80,  "34": 75,  "35": 70,  "36": 65,  "37": 60,
+    "38": 55,  "39": 50,  "40": 45,  "41": 35,  "42": 25,
+    "43": 15,  "44": 5,   "45-or-more": 0,
   };
 
   const withoutSpouse: Record<Exclude<AgeOption, "">, number> = {
     "17-or-less": 0,
-    "18": 99,
-    "19": 105,
-    "20": 110,
-    "21": 110,
-    "22": 110,
-    "23": 110,
-    "24": 110,
-    "25": 110,
-    "26": 110,
-    "27": 110,
-    "28": 110,
-    "29": 110,
-    "30": 105,
-    "31": 99,
-    "32": 94,
-    "33": 88,
-    "34": 83,
-    "35": 77,
-    "36": 72,
-    "37": 66,
-    "38": 61,
-    "39": 55,
-    "40": 50,
-    "41": 39,
-    "42": 28,
-    "43": 17,
-    "44": 6,
-    "45-or-more": 0,
+    "18": 99,  "19": 105, "20": 110, "21": 110, "22": 110,
+    "23": 110, "24": 110, "25": 110, "26": 110, "27": 110,
+    "28": 110, "29": 110, "30": 105, "31": 99,  "32": 94,
+    "33": 88,  "34": 83,  "35": 77,  "36": 72,  "37": 66,
+    "38": 61,  "39": 55,  "40": 50,  "41": 39,  "42": 28,
+    "43": 17,  "44": 6,   "45-or-more": 0,
   };
 
   if (!age) return 0;
   return treatedAsNoSpouse ? withoutSpouse[age] : withSpouse[age];
 }
 
-function educationPoints(
-  education: EducationLevel,
-  treatedAsNoSpouse: boolean
-) {
+function educationPoints(education: EducationLevel, treatedAsNoSpouse: boolean) {
   const withSpouse: Record<Exclude<EducationLevel, "">, number> = {
-    secondary: 28,
-    "one-year": 84,
-    "two-year": 91,
-    "bachelors-or-three-plus": 112,
-    "two-or-more": 119,
-    "masters-professional": 126,
-    phd: 140,
+    secondary: 28, "one-year": 84, "two-year": 91,
+    "bachelors-or-three-plus": 112, "two-or-more": 119,
+    "masters-professional": 126, phd: 140,
   };
-
   const withoutSpouse: Record<Exclude<EducationLevel, "">, number> = {
-    secondary: 30,
-    "one-year": 90,
-    "two-year": 98,
-    "bachelors-or-three-plus": 120,
-    "two-or-more": 128,
-    "masters-professional": 135,
-    phd: 150,
+    secondary: 30, "one-year": 90, "two-year": 98,
+    "bachelors-or-three-plus": 120, "two-or-more": 128,
+    "masters-professional": 135, phd: 150,
   };
-
   if (!education) return 0;
   return treatedAsNoSpouse ? withoutSpouse[education] : withSpouse[education];
 }
 
-function canadianExperiencePoints(
-  exp: ExperienceCanadaOption,
-  treatedAsNoSpouse: boolean
-) {
+function canadianExperiencePoints(exp: ExperienceCanadaOption, treatedAsNoSpouse: boolean) {
   const withSpouse: Record<Exclude<ExperienceCanadaOption, "">, number> = {
-    "none-or-less-than-one": 0,
-    "1": 35,
-    "2": 46,
-    "3": 56,
-    "4": 63,
-    "5-or-more": 70,
+    "none-or-less-than-one": 0, "1": 35, "2": 46, "3": 56, "4": 63, "5-or-more": 70,
   };
-
   const withoutSpouse: Record<Exclude<ExperienceCanadaOption, "">, number> = {
-    "none-or-less-than-one": 0,
-    "1": 40,
-    "2": 53,
-    "3": 64,
-    "4": 72,
-    "5-or-more": 80,
+    "none-or-less-than-one": 0, "1": 40, "2": 53, "3": 64, "4": 72, "5-or-more": 80,
   };
-
   if (!exp) return 0;
   return treatedAsNoSpouse ? withoutSpouse[exp] : withSpouse[exp];
 }
 
 function spouseEducationPoints(education: SpouseEducationLevel) {
   const map: Record<Exclude<SpouseEducationLevel, "">, number> = {
-    "none-or-less-than-secondary": 0,
-    secondary: 2,
-    "one-year": 6,
-    "two-year": 7,
-    "bachelors-or-three-plus": 8,
-    "two-or-more": 9,
-    "masters-professional": 10,
-    phd: 10,
+    "none-or-less-than-secondary": 0, secondary: 2, "one-year": 6, "two-year": 7,
+    "bachelors-or-three-plus": 8, "two-or-more": 9, "masters-professional": 10, phd: 10,
   };
-
   if (!education) return 0;
   return map[education];
 }
@@ -558,69 +489,201 @@ function spouseLanguagePerAbility(clb: ScoreOption) {
 
 function spouseCanadianExperiencePoints(exp: ExperienceCanadaOption) {
   const map: Record<Exclude<ExperienceCanadaOption, "">, number> = {
-    "none-or-less-than-one": 0,
-    "1": 5,
-    "2": 7,
-    "3": 8,
-    "4": 9,
-    "5-or-more": 10,
+    "none-or-less-than-one": 0, "1": 5, "2": 7, "3": 8, "4": 9, "5-or-more": 10,
   };
-
   if (!exp) return 0;
   return map[exp];
+}
+
+// ─── Skill Transferability (max 100 pts) ─────────────────────────────────────
+// Education tier: 0 = none/secondary, 1 = 1+ yr credential (incl. bachelor's), 2 = 2+ credentials / Master's / PhD
+function educationTransferTier(edu: EducationLevel): 0 | 1 | 2 {
+  if (!edu || edu === "secondary") return 0;
+  if (edu === "one-year" || edu === "two-year" || edu === "bachelors-or-three-plus") return 1;
+  return 2; // two-or-more, masters-professional, phd
+}
+
+// FWE tier: 0 = none, 1 = 1-2 yrs, 2 = 3+ yrs
+function foreignExpTransferTier(exp: ExperienceForeignOption): 0 | 1 | 2 {
+  if (!exp || exp === "none-or-less-than-one") return 0;
+  if (exp === "1" || exp === "2") return 1;
+  return 2; // 3-or-more
+}
+
+function cweYearsNum(exp: ExperienceCanadaOption): number {
+  switch (exp) {
+    case "1": return 1; case "2": return 2; case "3": return 3;
+    case "4": return 4; case "5-or-more": return 5;
+    default: return 0;
+  }
+}
+
+function skillTransferabilityPoints(form: CalculatorData): number {
+  const langValid = form.languageResultsValid === "yes";
+  const eduTier = educationTransferTier(form.educationLevel);
+  const fweTier = foreignExpTransferTier(form.foreignExperience);
+  const cweYrs = cweYearsNum(form.canadianExperience);
+
+  const firstAbilities: ScoreOption[] = [
+    form.firstSpeaking, form.firstListening, form.firstReading, form.firstWriting,
+  ];
+  const hasAllFirst = firstAbilities.every(a => !!a);
+  const minFirstClb = langValid && hasAllFirst
+    ? Math.min(...firstAbilities.map(clbNumeric))
+    : 0;
+
+  // Education + Language sub-factor (CLB 7+ required)
+  let eduLang = 0;
+  if (eduTier >= 1 && langValid && minFirstClb >= 7) {
+    eduLang = eduTier === 1
+      ? (minFirstClb >= 9 ? 25 : 13)
+      : (minFirstClb >= 9 ? 50 : 25);
+  }
+
+  // Education + Canadian work experience sub-factor
+  let eduCwe = 0;
+  if (eduTier >= 1 && cweYrs >= 1) {
+    eduCwe = eduTier === 1
+      ? (cweYrs >= 2 ? 25 : 13)
+      : (cweYrs >= 2 ? 50 : 25);
+  }
+
+  // Education category is capped at 50
+  const eduTotal = Math.min(eduLang + eduCwe, 50);
+
+  // Foreign work experience + Language sub-factor (CLB 7+ required)
+  let fweLang = 0;
+  if (fweTier >= 1 && langValid && minFirstClb >= 7) {
+    fweLang = fweTier === 1
+      ? (minFirstClb >= 9 ? 25 : 13)
+      : (minFirstClb >= 9 ? 50 : 25);
+  }
+
+  // Foreign work experience + Canadian work experience sub-factor
+  let fweCwe = 0;
+  if (fweTier >= 1 && cweYrs >= 1) {
+    fweCwe = fweTier === 1
+      ? (cweYrs >= 2 ? 25 : 13)
+      : (cweYrs >= 2 ? 50 : 25);
+  }
+
+  // FWE category is capped at 50
+  const fweTotal = Math.min(fweLang + fweCwe, 50);
+
+  // Certificate of Qualification + Language (CLB 5+ required)
+  let certTotal = 0;
+  if (form.hasCertificateOfQualification === "yes" && langValid && hasAllFirst) {
+    const allAbove5 = firstAbilities.every(a => clbNumeric(a) >= 5);
+    if (allAbove5) {
+      certTotal = minFirstClb >= 7 ? 50 : 25;
+    }
+  }
+
+  return Math.min(eduTotal + fweTotal + certTotal, 100);
+}
+
+// ─── French language additional bonus (max 50 pts) ───────────────────────────
+function frenchBonusPoints(form: CalculatorData): number {
+  if (form.languageResultsValid !== "yes") return 0;
+  const isFrench = (t: string) => t === "tef-canada" || t === "tcf-canada";
+  const isEnglish = (t: string) => t === "celpip-g" || t === "ielts" || t === "pte-core";
+
+  let frenchAbilities: ScoreOption[] = [];
+  let englishAbilities: ScoreOption[] = [];
+
+  if (isFrench(form.firstLanguageTest)) {
+    frenchAbilities = [form.firstSpeaking, form.firstListening, form.firstReading, form.firstWriting];
+    if (form.secondLanguageTest && form.secondLanguageTest !== "none" && isEnglish(form.secondLanguageTest)) {
+      englishAbilities = [form.secondSpeaking, form.secondListening, form.secondReading, form.secondWriting];
+    }
+  } else if (form.secondLanguageTest && isFrench(form.secondLanguageTest)) {
+    frenchAbilities = [form.secondSpeaking, form.secondListening, form.secondReading, form.secondWriting];
+    if (isEnglish(form.firstLanguageTest)) {
+      englishAbilities = [form.firstSpeaking, form.firstListening, form.firstReading, form.firstWriting];
+    }
+  } else {
+    return 0; // no French test in either language slot
+  }
+
+  if (!frenchAbilities.every(a => !!a)) return 0;
+  const frenchMin = Math.min(...frenchAbilities.map(clbNumeric));
+  if (frenchMin < 7) return 0; // French CLB 7 required minimum
+
+  const englishMin = englishAbilities.length === 4 && englishAbilities.every(a => !!a)
+    ? Math.min(...englishAbilities.map(clbNumeric))
+    : 0;
+
+  return englishMin >= 5 ? 50 : 25;
+}
+
+// ─── Canadian education additional bonus (max 30 pts) ────────────────────────
+function canadianEducationBonusPoints(form: CalculatorData): number {
+  if (form.hasCanadianCredential !== "yes") return 0;
+  if (form.canadianCredentialLevel === "one-or-two-year") return 15;
+  if (form.canadianCredentialLevel === "three-plus-or-masters-phd") return 30;
+  return 0;
+}
+
+// ─── Job offer points ─────────────────────────────────────────────────────────
+// Note: IRCC suspended job offer points March 25, 2025. Included for completeness.
+function jobOfferBonusPoints(form: CalculatorData): number {
+  if (form.hasValidJobOffer !== "yes") return 0;
+  if (form.jobOfferTeer === "major-group-00") return 200;
+  if (form.jobOfferTeer === "teer-0-1-2-3-other") return 50;
+  return 0;
 }
 
 function calculateCrsPreview(form: CalculatorData) {
   const treatedAsNoSpouse = isTreatedAsNoSpouse(form);
   const languageValid = form.languageResultsValid === "yes";
+
+  // ── A: Core / Human Capital ──────────────────────────────────────────────
   const age = agePoints(form.age, treatedAsNoSpouse);
   const education = educationPoints(form.educationLevel, treatedAsNoSpouse);
 
   const firstLanguage = languageValid
-  ? firstLanguagePointsPerAbility(form.firstSpeaking, treatedAsNoSpouse) +
-    firstLanguagePointsPerAbility(form.firstListening, treatedAsNoSpouse) +
-    firstLanguagePointsPerAbility(form.firstReading, treatedAsNoSpouse) +
-    firstLanguagePointsPerAbility(form.firstWriting, treatedAsNoSpouse)
-  : 0;
+    ? firstLanguagePointsPerAbility(form.firstSpeaking, treatedAsNoSpouse) +
+      firstLanguagePointsPerAbility(form.firstListening, treatedAsNoSpouse) +
+      firstLanguagePointsPerAbility(form.firstReading, treatedAsNoSpouse) +
+      firstLanguagePointsPerAbility(form.firstWriting, treatedAsNoSpouse)
+    : 0;
 
-const secondLanguage = languageValid
-  ? cappedSecondLanguageTotal(
-      [
+  const secondLanguage = languageValid
+    ? cappedSecondLanguageTotal([
         form.secondSpeaking,
         form.secondListening,
         form.secondReading,
         form.secondWriting,
-      ],
-      treatedAsNoSpouse
-    )
-  : 0;
+      ])
+    : 0;
 
-  const canadianExp = canadianExperiencePoints(
-    form.canadianExperience,
-    treatedAsNoSpouse
-  );
-
+  const canadianExp = canadianExperiencePoints(form.canadianExperience, treatedAsNoSpouse);
   const corePrincipal = age + education + firstLanguage + secondLanguage + canadianExp;
 
+  // ── B: Spouse / Common-law Factors ──────────────────────────────────────
   const spouseEducation = treatedAsNoSpouse ? 0 : spouseEducationPoints(form.spouseEducationLevel);
   const spouseLanguage = treatedAsNoSpouse
     ? 0
     : Math.min(
         spouseLanguagePerAbility(form.spouseSpeaking) +
-          spouseLanguagePerAbility(form.spouseListening) +
-          spouseLanguagePerAbility(form.spouseReading) +
-          spouseLanguagePerAbility(form.spouseWriting),
+        spouseLanguagePerAbility(form.spouseListening) +
+        spouseLanguagePerAbility(form.spouseReading) +
+        spouseLanguagePerAbility(form.spouseWriting),
         20
       );
-  const spouseCanadianExp = treatedAsNoSpouse
-    ? 0
-    : spouseCanadianExperiencePoints(form.spouseCanadianExperience);
-
+  const spouseCanadianExp = treatedAsNoSpouse ? 0 : spouseCanadianExperiencePoints(form.spouseCanadianExperience);
   const spouseTotal = spouseEducation + spouseLanguage + spouseCanadianExp;
 
-  const additional =
-    (form.hasProvincialNomination === "yes" ? 600 : 0) +
-    (form.hasSiblingInCanada === "yes" ? 15 : 0);
+  // ── C: Skill Transferability (max 100) ──────────────────────────────────
+  const skillTransferability = skillTransferabilityPoints(form);
+
+  // ── D: Additional Points ─────────────────────────────────────────────────
+  const pnp = form.hasProvincialNomination === "yes" ? 600 : 0;
+  const sibling = form.hasSiblingInCanada === "yes" ? 15 : 0;
+  const frenchBonus = frenchBonusPoints(form);
+  const canadianEdBonus = canadianEducationBonusPoints(form);
+  const jobOffer = jobOfferBonusPoints(form);
+  const additional = pnp + sibling + frenchBonus + canadianEdBonus + jobOffer;
 
   return {
     treatedAsNoSpouse,
@@ -632,8 +695,14 @@ const secondLanguage = languageValid
     spouseEducation,
     spouseLanguage,
     spouseCanadianExp,
+    skillTransferability,
+    pnp,
+    sibling,
+    frenchBonus,
+    canadianEdBonus,
+    jobOffer,
     additional,
-    total: corePrincipal + spouseTotal + additional,
+    total: corePrincipal + spouseTotal + skillTransferability + additional,
   };
 }
 
@@ -1354,20 +1423,37 @@ export default function CRSCalculatorPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
+              {/* Core Human Capital */}
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-                <div>{t("calc_age_pts")} {crsPreview.age}</div>
-                <div>{t("calc_edu_pts")} {crsPreview.education}</div>
-                <div>{t("calc_lang1_pts")} {crsPreview.firstLanguage}</div>
-                <div>{t("calc_lang2_pts")} {crsPreview.secondLanguage}</div>
-                <div>{t("calc_can_exp_pts")} {crsPreview.canadianExp}</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">Core</div>
+                <div className="flex justify-between"><span>{t("calc_age_pts")}</span><span>{crsPreview.age}</span></div>
+                <div className="flex justify-between"><span>{t("calc_edu_pts")}</span><span>{crsPreview.education}</span></div>
+                <div className="flex justify-between"><span>{t("calc_lang1_pts")}</span><span>{crsPreview.firstLanguage}</span></div>
+                <div className="flex justify-between"><span>{t("calc_lang2_pts")}</span><span>{crsPreview.secondLanguage}</span></div>
+                <div className="flex justify-between"><span>{t("calc_can_exp_pts")}</span><span>{crsPreview.canadianExp}</span></div>
+                {!crsPreview.treatedAsNoSpouse && (
+                  <>
+                    <div className="mt-2 flex justify-between"><span>{t("calc_spouse_edu_pts")}</span><span>{crsPreview.spouseEducation}</span></div>
+                    <div className="flex justify-between"><span>{t("calc_spouse_lang_pts")}</span><span>{crsPreview.spouseLanguage}</span></div>
+                    <div className="flex justify-between"><span>{t("calc_spouse_can_pts")}</span><span>{crsPreview.spouseCanadianExp}</span></div>
+                  </>
+                )}
               </div>
 
+              {/* Skill Transferability + Additional */}
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-                <div>{t("calc_spouse_edu_pts")} {crsPreview.spouseEducation}</div>
-                <div>{t("calc_spouse_lang_pts")} {crsPreview.spouseLanguage}</div>
-                <div>{t("calc_spouse_can_pts")} {crsPreview.spouseCanadianExp}</div>
-                <div>{t("calc_additional_pts")} {crsPreview.additional}</div>
-                <div className="mt-2 font-semibold text-white">{t("calc_total")} {crsPreview.total}</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">Skill Transferability</div>
+                <div className="flex justify-between"><span>{t("calc_skill_transfer_pts")}</span><span className="text-white">{crsPreview.skillTransferability}</span></div>
+                <div className="mb-2 mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">{t("calc_additional_label")}</div>
+                {crsPreview.pnp > 0 && <div className="flex justify-between"><span>Provincial nomination</span><span>+{crsPreview.pnp}</span></div>}
+                {crsPreview.jobOffer > 0 && <div className="flex justify-between"><span>Job offer</span><span>+{crsPreview.jobOffer}</span></div>}
+                {crsPreview.frenchBonus > 0 && <div className="flex justify-between"><span>French language bonus</span><span>+{crsPreview.frenchBonus}</span></div>}
+                {crsPreview.canadianEdBonus > 0 && <div className="flex justify-between"><span>Canadian education</span><span>+{crsPreview.canadianEdBonus}</span></div>}
+                {crsPreview.sibling > 0 && <div className="flex justify-between"><span>Sibling in Canada</span><span>+{crsPreview.sibling}</span></div>}
+                {crsPreview.additional === 0 && <div className="text-white/40">—</div>}
+                <div className="mt-3 border-t border-white/10 pt-3 flex justify-between font-semibold text-white">
+                  <span>{t("calc_total")}</span><span>{crsPreview.total}</span>
+                </div>
               </div>
             </div>
 
@@ -1534,16 +1620,31 @@ export default function CRSCalculatorPage() {
             </div>
 
             <div className="mt-5 grid gap-3 text-sm text-white/75">
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Current section:</span>{" "}
-                {steps[currentStep]}
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+                <span className="text-cyan-200/70">Estimated CRS:</span>{" "}
+                <span className="font-semibold text-white">{crsPreview.total}</span>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Estimated CRS:</span> {crsPreview.total}
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Marital status:</span>{" "}
-                {form.maritalStatus || "—"}
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-3 text-xs">
+                <div className="flex justify-between text-white/50">
+                  <span>Core:</span>
+                  <span>{crsPreview.age + crsPreview.education + crsPreview.firstLanguage + crsPreview.secondLanguage + crsPreview.canadianExp}</span>
+                </div>
+                <div className="flex justify-between text-white/50">
+                  <span>Skill transfer:</span>
+                  <span>{crsPreview.skillTransferability}</span>
+                </div>
+                {!crsPreview.treatedAsNoSpouse && (
+                  <div className="flex justify-between text-white/50">
+                    <span>Spouse:</span>
+                    <span>{crsPreview.spouseEducation + crsPreview.spouseLanguage + crsPreview.spouseCanadianExp}</span>
+                  </div>
+                )}
+                {crsPreview.additional > 0 && (
+                  <div className="flex justify-between text-white/50">
+                    <span>Additional:</span>
+                    <span>+{crsPreview.additional}</span>
+                  </div>
+                )}
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
                 <span className="text-white/45">Age:</span> {form.age || "—"}
@@ -1557,20 +1658,12 @@ export default function CRSCalculatorPage() {
                 {form.firstLanguageTest || "—"}
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Canadian experience:</span>{" "}
+                <span className="text-white/45">Canadian exp:</span>{" "}
                 {form.canadianExperience || "—"}
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Foreign experience:</span>{" "}
+                <span className="text-white/45">Foreign exp:</span>{" "}
                 {form.foreignExperience || "—"}
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Provincial nomination:</span>{" "}
-                {form.hasProvincialNomination || "—"}
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3">
-                <span className="text-white/45">Sibling in Canada:</span>{" "}
-                {form.hasSiblingInCanada || "—"}
               </div>
             </div>
           </aside>
