@@ -14,8 +14,13 @@ export type ScrapedDraw = {
 const IRCC_GENERAL_URL =
   "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations.html";
 
+// Updated 2026-04: old category-based URL returned 404, replaced with current history page
 const IRCC_CATEGORY_URL =
-  "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations/rounds-invitations-category-based.html";
+  "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations/rounds-invitations-history.html";
+
+// Fallback category URL in case primary returns non-200
+const IRCC_CATEGORY_URL_FALLBACK =
+  "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations/category-based-selection.html";
 
 const FETCH_HEADERS = {
   "User-Agent":
@@ -194,21 +199,26 @@ export async function scrapeGeneralDraws(): Promise<ScrapeResult> {
 
 export async function scrapeCategoryDraws(): Promise<ScrapeResult> {
   const fetchedAt = new Date().toISOString();
-  try {
-    const res = await fetch(IRCC_CATEGORY_URL, {
-      headers: FETCH_HEADERS,
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
-    const draws = parseDrawsFromHtml(html, "Category-Based");
-    return { draws, source: IRCC_CATEGORY_URL, fetchedAt };
-  } catch (err) {
-    return {
-      draws: [],
-      source: IRCC_CATEGORY_URL,
-      fetchedAt,
-      error: err instanceof Error ? err.message : String(err),
-    };
+
+  for (const url of [IRCC_CATEGORY_URL, IRCC_CATEGORY_URL_FALLBACK]) {
+    try {
+      const res = await fetch(url, {
+        headers: FETCH_HEADERS,
+        cache: "no-store",
+      });
+      if (!res.ok) continue; // try next URL
+      const html = await res.text();
+      const draws = parseDrawsFromHtml(html, "Category-Based");
+      return { draws, source: url, fetchedAt };
+    } catch {
+      // try next URL
+    }
   }
+
+  return {
+    draws: [],
+    source: IRCC_CATEGORY_URL,
+    fetchedAt,
+    error: "All category draw URLs returned non-200 or failed",
+  };
 }
