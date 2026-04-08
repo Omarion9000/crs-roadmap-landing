@@ -104,6 +104,31 @@ function CounterStat({
   );
 }
 
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between py-5 text-left text-sm font-semibold text-white/80 transition hover:text-white"
+      >
+        <span>{question}</span>
+        <span
+          className={`ml-6 shrink-0 text-lg font-light text-white/35 transition-transform duration-200 ${
+            open ? "rotate-45" : ""
+          }`}
+        >
+          +
+        </span>
+      </button>
+      {open && (
+        <p className="pb-5 text-sm leading-7 text-white/52">{answer}</p>
+      )}
+    </div>
+  );
+}
+
 function Section({
   id,
   eyebrow,
@@ -534,6 +559,23 @@ export default function PremiumHome() {
               <div className="mt-3 text-xs text-white/38">{t("pricing_pro_cancel")}</div>
             </div>
           </motion.div>
+        </motion.div>
+      </Section>
+
+      {/* ── FAQ ── */}
+      <Section eyebrow={t("faq_eyebrow")} title={t("faq_title")} tight>
+        <motion.div variants={itemVariants} className="mx-auto max-w-2xl">
+          {(
+            [
+              ["faq_q1", "faq_a1"],
+              ["faq_q2", "faq_a2"],
+              ["faq_q3", "faq_a3"],
+              ["faq_q4", "faq_a4"],
+              ["faq_q5", "faq_a5"],
+            ] as const
+          ).map(([qk, ak]) => (
+            <FaqItem key={qk} question={t(qk)} answer={t(ak)} />
+          ))}
         </motion.div>
       </Section>
 

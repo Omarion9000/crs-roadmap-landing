@@ -157,6 +157,25 @@ export const en = {
   pricing_pro_cancel:
     "Cancel anytime. Early access pricing while the full advisor layer is being expanded.",
 
+  // ── Landing — FAQ ────────────────────────────────────────────────────────────
+  faq_eyebrow: "Common questions",
+  faq_title: "Everything you need to know",
+  faq_q1: "Is this immigration advice?",
+  faq_a1:
+    "No. Pravé is an informational tool. Our CRS calculator and simulator are built on publicly available IRCC data, but results are estimates and should not be treated as immigration advice. Always verify with IRCC or a licensed RCIC.",
+  faq_q2: "Can I cancel anytime?",
+  faq_a2:
+    "Yes. You can cancel your Pro subscription at any time from the billing portal. You keep full access until the end of your current billing period — no questions asked.",
+  faq_q3: "How accurate is the CRS calculator?",
+  faq_a3:
+    "Our calculator follows the official IRCC CRS grid and is highly accurate for standard profiles. Small differences (±6 pts) can occur depending on the exact test scores entered, since the official Canada.ca tool converts raw scores to CLB levels internally.",
+  faq_q4: "What is Express Entry?",
+  faq_a4:
+    "Express Entry is Canada's federal management system for skilled worker immigration. It uses the CRS (Comprehensive Ranking System) to rank candidates — those with the highest scores receive Invitations to Apply (ITAs) for permanent residence.",
+  faq_q5: "How often are draws held?",
+  faq_a5:
+    "IRCC holds Express Entry draws approximately every two weeks, though frequency and minimum scores vary. There are general draws, French-language draws, and category-based draws (e.g., STEM, healthcare, trades) — each a separate event.",
+
   // ── Landing — Final CTA ─────────────────────────────────────────────────────
   cta_eyebrow: "Get started",
   cta_title: "Start your roadmap today",
@@ -545,6 +564,25 @@ export const es: Record<TranslationKey, string> = {
     "Menos que una sola consulta migratoria — disponible cuando la necesites.",
   pricing_pro_cancel:
     "Cancela en cualquier momento. Precio de acceso anticipado mientras se expande la capa de asesor completa.",
+
+  // ── Landing — FAQ ────────────────────────────────────────────────────────────
+  faq_eyebrow: "Preguntas frecuentes",
+  faq_title: "Todo lo que necesitas saber",
+  faq_q1: "¿Es esto asesoría migratoria?",
+  faq_a1:
+    "No. Pravé es una herramienta informativa. Nuestra calculadora CRS y simulador se basan en datos públicos de IRCC, pero los resultados son estimaciones y no deben tratarse como asesoría migratoria. Siempre verifica con IRCC o un RCIC autorizado.",
+  faq_q2: "¿Puedo cancelar cuando quiera?",
+  faq_a2:
+    "Sí. Puedes cancelar tu suscripción Pro en cualquier momento desde el portal de facturación. Mantienes acceso completo hasta el final de tu período de facturación actual — sin preguntas.",
+  faq_q3: "¿Qué tan precisa es la calculadora CRS?",
+  faq_a3:
+    "Nuestra calculadora sigue la cuadrícula CRS oficial de IRCC y es muy precisa para perfiles estándar. Pueden ocurrir pequeñas diferencias (±6 pts) según los puntajes exactos ingresados, ya que la herramienta oficial de Canada.ca convierte puntajes brutos a niveles CLB internamente.",
+  faq_q4: "¿Qué es Express Entry?",
+  faq_a4:
+    "Express Entry es el sistema federal de gestión de inmigración de trabajadores calificados de Canadá. Usa el CRS (Sistema de Clasificación Integral) para clasificar candidatos — los de mayor puntaje reciben Invitaciones a Solicitar (ITAs) residencia permanente.",
+  faq_q5: "¿Con qué frecuencia hay draws?",
+  faq_a5:
+    "IRCC realiza sorteos de Express Entry aproximadamente cada dos semanas, aunque la frecuencia y puntajes mínimos varían. Hay sorteos generales, de francés y por categoría (p.ej. STEM, salud, oficios) — cada uno es un evento separado.",
 
   // ── Landing — Final CTA ─────────────────────────────────────────────────────
   cta_eyebrow: "Comienza",
