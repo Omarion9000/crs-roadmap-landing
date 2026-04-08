@@ -216,6 +216,10 @@ export const en = {
   calc_cta_desc: "Now see which moves improve your score the most — and in what order.",
   calc_open_simulator: "Open simulator →",
   calc_back_to_start: "Back to start",
+  calc_disclaimer:
+    "Results are estimates. Official scores may vary slightly based on exact test scores entered in the Canada.ca CRS tool.",
+  calc_clb_guide_title: "Score → CLB reference",
+  calc_clb_guide_source: "Minimum scores. Source: IRCC official CLB conversion charts.",
 
   // ── Simulator — empty states ─────────────────────────────────────────────────
   sim_anon_eyebrow: "Sign in to continue",
@@ -601,6 +605,10 @@ export const es: Record<TranslationKey, string> = {
   calc_cta_desc: "Ahora ve qué movimientos mejoran más tu puntaje — y en qué orden.",
   calc_open_simulator: "Abrir simulador →",
   calc_back_to_start: "Volver al inicio",
+  calc_disclaimer:
+    "Los resultados son estimaciones. Los puntajes oficiales pueden variar ligeramente según los puntajes exactos ingresados en la herramienta CRS de Canada.ca.",
+  calc_clb_guide_title: "Referencia puntaje → CLB",
+  calc_clb_guide_source: "Puntajes mínimos. Fuente: tablas oficiales de conversión CLB de IRCC.",
 
   // ── Simulator — empty states ─────────────────────────────────────────────────
   sim_anon_eyebrow: "Inicia sesión para continuar",

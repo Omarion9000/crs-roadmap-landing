@@ -237,6 +237,57 @@ const spouseLanguageTests: Array<{ value: SpouseLanguageTest; label: string }> =
   { value: "tcf-canada", label: "TCF Canada" },
 ];
 
+// ─── CLB Score Reference Data (IRCC official conversion charts) ───────────────
+type ClbRow = { clb: string; s: string; l: string; r: string; w: string };
+
+const CLB_SCORES: Record<string, ClbRow[]> = {
+  ielts: [
+    { clb: "10+", s: "7.5+", l: "8.5+", r: "8.0+", w: "7.5+" },
+    { clb: "9",   s: "7.0",  l: "8.0",  r: "7.0",  w: "7.0"  },
+    { clb: "8",   s: "6.5",  l: "7.5",  r: "6.5",  w: "6.5"  },
+    { clb: "7",   s: "6.0",  l: "6.0",  r: "6.0",  w: "6.0"  },
+    { clb: "6",   s: "5.5",  l: "5.5",  r: "5.0",  w: "5.5"  },
+    { clb: "5",   s: "5.0",  l: "5.0",  r: "4.0",  w: "5.0"  },
+    { clb: "4",   s: "4.0",  l: "4.5",  r: "3.5",  w: "4.0"  },
+  ],
+  "celpip-g": [
+    { clb: "10+", s: "10", l: "10", r: "10", w: "10" },
+    { clb: "9",   s: "9",  l: "9",  r: "9",  w: "9"  },
+    { clb: "8",   s: "8",  l: "8",  r: "8",  w: "8"  },
+    { clb: "7",   s: "7",  l: "7",  r: "7",  w: "7"  },
+    { clb: "6",   s: "6",  l: "6",  r: "6",  w: "6"  },
+    { clb: "5",   s: "5",  l: "5",  r: "5",  w: "5"  },
+    { clb: "4",   s: "4",  l: "4",  r: "4",  w: "4"  },
+  ],
+  "pte-core": [
+    { clb: "10+", s: "89+", l: "89+", r: "88+", w: "90" },
+    { clb: "9",   s: "84",  l: "82",  r: "78",  w: "88" },
+    { clb: "8",   s: "76",  l: "71",  r: "65",  w: "79" },
+    { clb: "7",   s: "68",  l: "60",  r: "58",  w: "65" },
+    { clb: "6",   s: "59",  l: "50",  r: "51",  w: "60" },
+    { clb: "5",   s: "51",  l: "39",  r: "42",  w: "51" },
+    { clb: "4",   s: "42",  l: "28",  r: "33",  w: "41" },
+  ],
+  "tef-canada": [
+    { clb: "10+", s: "393+", l: "316+", r: "263+", w: "393+" },
+    { clb: "9",   s: "371",  l: "298",  r: "248",  w: "371"  },
+    { clb: "8",   s: "349",  l: "280",  r: "233",  w: "349"  },
+    { clb: "7",   s: "310",  l: "249",  r: "207",  w: "310"  },
+    { clb: "6",   s: "271",  l: "217",  r: "181",  w: "271"  },
+    { clb: "5",   s: "226",  l: "181",  r: "151",  w: "226"  },
+    { clb: "4",   s: "181",  l: "145",  r: "121",  w: "181"  },
+  ],
+  "tcf-canada": [
+    { clb: "10+", s: "16+", l: "549+", r: "549+", w: "16+" },
+    { clb: "9",   s: "14",  l: "523",  r: "524",  w: "14"  },
+    { clb: "8",   s: "12",  l: "503",  r: "499",  w: "12"  },
+    { clb: "7",   s: "10",  l: "458",  r: "453",  w: "10"  },
+    { clb: "6",   s: "7",   l: "398",  r: "406",  w: "7"   },
+    { clb: "5",   s: "6",   l: "369",  r: "375",  w: "6"   },
+    { clb: "4",   s: "4",   l: "331",  r: "342",  w: "4"   },
+  ],
+};
+
 function SectionTitle({
   eyebrow,
   title,
@@ -282,6 +333,61 @@ function SelectField({
     >
       {children}
     </select>
+  );
+}
+
+function ClbScoreGuide({ test, title, source }: { test: string; title: string; source: string }) {
+  const rows = CLB_SCORES[test];
+  if (!rows) return null;
+
+  const testLabel: Record<string, string> = {
+    ielts: "IELTS General",
+    "celpip-g": "CELPIP-G",
+    "pte-core": "PTE Core",
+    "tef-canada": "TEF Canada",
+    "tcf-canada": "TCF Canada",
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+        {title} — {testLabel[test]}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-white/30">
+              <th className="pb-2 text-left font-semibold">CLB</th>
+              <th className="pb-2 text-center font-semibold">Speaking</th>
+              <th className="pb-2 text-center font-semibold">Listening</th>
+              <th className="pb-2 text-center font-semibold">Reading</th>
+              <th className="pb-2 text-center font-semibold">Writing</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.clb}
+                className={
+                  row.clb === "10+" || row.clb === "9"
+                    ? "font-medium text-cyan-200/75"
+                    : row.clb === "8" || row.clb === "7"
+                    ? "text-white/55"
+                    : "text-white/30"
+                }
+              >
+                <td className="py-0.5 font-semibold">CLB {row.clb}</td>
+                <td className="py-0.5 text-center">{row.s}</td>
+                <td className="py-0.5 text-center">{row.l}</td>
+                <td className="py-0.5 text-center">{row.r}</td>
+                <td className="py-0.5 text-center">{row.w}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[10px] text-white/28">{source}</p>
+    </div>
   );
 }
 
@@ -1070,6 +1176,14 @@ export default function CRSCalculatorPage() {
                 </SelectField>
               </div>
 
+              {form.firstLanguageTest && (
+                <ClbScoreGuide
+                  test={form.firstLanguageTest}
+                  title={t("calc_clb_guide_title")}
+                  source={t("calc_clb_guide_source")}
+                />
+              )}
+
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                 <div className="mb-4 text-sm font-medium text-white/85">
                   First official language levels
@@ -1109,26 +1223,33 @@ export default function CRSCalculatorPage() {
               </div>
 
               {form.secondLanguageTest && form.secondLanguageTest !== "none" ? (
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <div className="mb-4 text-sm font-medium text-white/85">
-                    Second official language levels
-                  </div>
-                  <ScoresGrid
-                    speaking={form.secondSpeaking}
-                    listening={form.secondListening}
-                    reading={form.secondReading}
-                    writing={form.secondWriting}
-                    onChange={(field, value) => {
-                      const map = {
-                        speaking: "secondSpeaking",
-                        listening: "secondListening",
-                        reading: "secondReading",
-                        writing: "secondWriting",
-                      } as const;
-                      updateField(map[field], value);
-                    }}
+                <>
+                  <ClbScoreGuide
+                    test={form.secondLanguageTest}
+                    title={t("calc_clb_guide_title")}
+                    source={t("calc_clb_guide_source")}
                   />
-                </div>
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                    <div className="mb-4 text-sm font-medium text-white/85">
+                      Second official language levels
+                    </div>
+                    <ScoresGrid
+                      speaking={form.secondSpeaking}
+                      listening={form.secondListening}
+                      reading={form.secondReading}
+                      writing={form.secondWriting}
+                      onChange={(field, value) => {
+                        const map = {
+                          speaking: "secondSpeaking",
+                          listening: "secondListening",
+                          reading: "secondReading",
+                          writing: "secondWriting",
+                        } as const;
+                        updateField(map[field], value);
+                      }}
+                    />
+                  </div>
+                </>
               ) : null}
             </div>
           </div>
@@ -1420,6 +1541,12 @@ export default function CRSCalculatorPage() {
                   Based on marital status, spouse accompaniment, and spouse PR/citizen status.
                 </p>
               </div>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="flex items-start gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-xs text-white/45">
+              <span className="mt-0.5 shrink-0 text-white/30">ⓘ</span>
+              <span>{t("calc_disclaimer")}</span>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
