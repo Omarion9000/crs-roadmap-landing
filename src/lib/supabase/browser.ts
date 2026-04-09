@@ -8,12 +8,11 @@ export function createSupabaseBrowserClient() {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
   }
 
-  // flowType: 'implicit' avoids PKCE — magic links send token_hash instead of
-  // a code that requires the original localStorage verifier. This is critical
-  // on mobile where email apps open links in a new browser context (in-app
-  // browser or default browser) that doesn't share localStorage with the tab
-  // that requested the link, causing exchangeCodeForSession to fail.
-  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    auth: { flowType: "implicit" },
-  });
+  // @supabase/ssr always forces flowType:'pkce' regardless of options passed here
+  // (it spreads our auth options first, then hardcodes flowType:"pkce" after).
+  // PKCE works correctly across tabs because @supabase/ssr stores the
+  // code_verifier in a cookie (not localStorage), which persists after
+  // navigation. iOS webview cross-browser failure is handled separately in
+  // the /auth/callback page component via UA detection.
+  return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }

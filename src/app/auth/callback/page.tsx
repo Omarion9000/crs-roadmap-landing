@@ -168,7 +168,30 @@ function AuthCallbackInner() {
 
     async function handleCallback() {
       try {
-        // ── Path 1: implicit flow — tokens in hash fragment ──────────────────
+        // ── Path 1: PKCE code flow (?code=...) ──────────────────────────────
+        // @supabase/ssr always uses PKCE (it hardcodes flowType:'pkce' and
+        // ignores any flowType option passed to createBrowserClient). The
+        // code_verifier is stored in a cookie by @supabase/ssr, so it
+        // survives navigation and is available here in the same browser.
+        const code = searchParams.get("code");
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+
+          if (data.user) {
+            fetch("/api/auth/post-signin", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: data.user.id }),
+            }).catch(() => {/* non-critical */});
+          }
+
+          router.replace(returnTo);
+          return;
+        }
+
+        // ── Path 2: implicit flow — tokens in hash fragment ──────────────────
+        // Kept as fallback in case the auth server ever sends hash-based links.
         const hash = window.location.hash;
         if (hash && hash.includes("access_token")) {
           const params = new URLSearchParams(hash.substring(1));
@@ -186,7 +209,6 @@ function AuthCallbackInner() {
 
           if (error) throw error;
 
-          // Trigger welcome email (fire-and-forget — don't block redirect)
           if (data.user) {
             fetch("/api/auth/post-signin", {
               method: "POST",
@@ -195,13 +217,12 @@ function AuthCallbackInner() {
             }).catch(() => {/* non-critical */});
           }
 
-          // Clear hash before redirect so tokens don't linger in history
           history.replaceState(null, "", window.location.pathname + window.location.search);
           router.replace(returnTo);
           return;
         }
 
-        // ── Path 2: token_hash in query params (OTP / fallback) ─────────────
+        // ── Path 3: token_hash in query params (OTP / email confirmation) ────
         const tokenHash = searchParams.get("token_hash");
         const otpType = searchParams.get("type");
 
