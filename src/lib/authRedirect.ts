@@ -42,8 +42,9 @@ export function getAuthBaseUrl(options?: { requestOrigin?: string | null }) {
 
   const fromEnv =
     normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL) ??
-    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ??
-    normalizeBaseUrl(process.env.VERCEL_URL);
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+  // Note: VERCEL_URL is intentionally excluded — it resolves to a *.vercel.app
+  // deployment URL which breaks auth redirects when the canonical domain differs.
 
   if (fromEnv) {
     return fromEnv;

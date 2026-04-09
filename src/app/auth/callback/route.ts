@@ -11,7 +11,16 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const otpType = searchParams.get("type");
   const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-  const baseUrl = getAuthBaseUrl({ requestOrigin: origin });
+
+  // Always redirect to the canonical site URL, not the request origin.
+  // The request origin may be a *.vercel.app preview URL; NEXT_PUBLIC_SITE_URL
+  // must be set to https://www.pravepath.ca in Vercel env vars.
+  const canonicalBase =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ??
+    getAuthBaseUrl({ requestOrigin: origin }); // fallback for local dev
+
+  const baseUrl = canonicalBase;
   const successDestination = `${baseUrl}${returnTo}`;
   const successResponse = NextResponse.redirect(successDestination);
   let sessionEstablished = false;

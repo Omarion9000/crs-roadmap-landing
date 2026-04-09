@@ -128,7 +128,15 @@ export default function LoginPageClient() {
       const supabase = createSupabaseBrowserClient();
       const rawReturnTo = searchParams.get("returnTo");
       const returnTo = sanitizeReturnTo(rawReturnTo);
-      const emailRedirectTo = getAuthRedirectUrl("/auth/callback", { returnTo });
+
+      // Always build emailRedirectTo against the canonical production domain so
+      // the magic link callback URL is consistent regardless of which deployment
+      // (preview vs production) the user happens to be on when they log in.
+      const siteBase =
+        process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ??
+        window.location.origin;
+      const emailRedirectTo = getAuthRedirectUrl("/auth/callback", { returnTo, requestOrigin: siteBase });
       const emailRedirectUrl = new URL(emailRedirectTo);
       const authOptionsPayload = {
         emailRedirectTo,
