@@ -11,23 +11,47 @@ export type ScrapedDraw = {
   invitations_issued: number;
 };
 
+export type ScrapeResult = {
+  draws: ScrapedDraw[];
+  source: string;
+  fetchedAt: string;
+  // Debug fields — always populated for observability
+  httpStatus: number | null;
+  contentType: string | null;
+  htmlLength: number | null;
+  tablesFound: number | null;
+  rowsBeforeFilter: number | null;
+  htmlPreview: string | null; // first 500 chars
+  error?: string;
+};
+
 const IRCC_GENERAL_URL =
   "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations.html";
 
-// Updated 2026-04: old category-based URL returned 404, replaced with current history page
+// Updated 2026-04: old category-based URL returned 404
 const IRCC_CATEGORY_URL =
   "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations/rounds-invitations-history.html";
 
-// Fallback category URL in case primary returns non-200
 const IRCC_CATEGORY_URL_FALLBACK =
   "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/rounds-invitations/category-based-selection.html";
 
+// Realistic Chrome on macOS UA — canada.ca silently returns bot-challenge pages
+// for non-browser UAs (HTTP 200, no tables, no error).
 const FETCH_HEADERS = {
   "User-Agent":
-    "Mozilla/5.0 (compatible; PRAVÉ-CRS-Bot/1.0; +https://prave.ca)",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-CA,en;q=0.9",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
+  "Accept-Encoding": "gzip, deflate, br",
   "Cache-Control": "no-cache",
+  "Pragma": "no-cache",
+  Connection: "keep-alive",
+  Referer: "https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry.html",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "same-origin",
+  "Upgrade-Insecure-Requests": "1",
 };
 
 // ----- HTML helpers -----
@@ -62,10 +86,6 @@ function parseNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Extract rows from an HTML table string.
- * Returns array of string arrays (one per row, cells as text).
- */
 function extractTableRows(tableHtml: string): string[][] {
   const rows: string[][] = [];
   const rowMatches = tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
@@ -80,10 +100,6 @@ function extractTableRows(tableHtml: string): string[][] {
   return rows;
 }
 
-/**
- * Find nearest section heading (h2/h3) before a given position in the HTML.
- * Used to identify the program type for each table.
- */
 function findNearestHeading(html: string, tableIndex: number): string {
   const headingRegex = /<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi;
   let lastHeading = "General";
@@ -92,7 +108,6 @@ function findNearestHeading(html: string, tableIndex: number): string {
   while ((match = headingRegex.exec(html)) !== null) {
     if (match.index > tableIndex) break;
     const text = stripTags(match[1]).toLowerCase();
-    // Map common section titles to our program type labels
     if (text.includes("no program") || text.includes("general")) {
       lastHeading = "General";
     } else if (text.includes("category")) {
@@ -120,30 +135,27 @@ function findNearestHeading(html: string, tableIndex: number): string {
   return lastHeading;
 }
 
-/**
- * Parse all draws from a single IRCC HTML page.
- * Handles pages that contain multiple tables for different program types.
- */
-function parseDrawsFromHtml(html: string, defaultProgram: string): ScrapedDraw[] {
+function parseDrawsFromHtml(
+  html: string,
+  defaultProgram: string
+): { draws: ScrapedDraw[]; tablesFound: number; rowsBeforeFilter: number } {
   const draws: ScrapedDraw[] = [];
   const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
   let match: RegExpExecArray | null;
+  let tablesFound = 0;
+  let rowsBeforeFilter = 0;
 
   while ((match = tableRegex.exec(html)) !== null) {
+    tablesFound++;
     const programType = findNearestHeading(html, match.index) || defaultProgram;
     const rows = extractTableRows(match[1]);
+    rowsBeforeFilter += rows.length;
 
     for (const cells of rows) {
-      // Skip header rows (contain text like "Round", "Date", "CRS")
       if (!cells[0] || !/^\d+$/.test(cells[0].replace(/\s/g, ""))) continue;
 
-      // Column order: draw_number | date | invitations | minimum_score | [tie-breaking]
-      // Some tables omit the draw number column — detect by checking if cell[0] is a number
       const drawNumRaw = cells[0].replace(/\s/g, "");
       const drawNumber = /^\d+$/.test(drawNumRaw) ? parseInt(drawNumRaw, 10) : null;
-
-      // When draw number is present: cols = [num, date, invitations, score]
-      // When absent:                 cols = [date, invitations, score]
       const offset = drawNumber !== null ? 1 : 0;
 
       const dateStr = parseCanadaDate(cells[offset] ?? "");
@@ -151,7 +163,7 @@ function parseDrawsFromHtml(html: string, defaultProgram: string): ScrapedDraw[]
       const score = parseNumber(cells[offset + 2] ?? "");
 
       if (!dateStr || invitations === null || score === null) continue;
-      if (score < 300 || score > 900) continue; // sanity check
+      if (score < 300 || score > 900) continue;
       if (invitations < 1 || invitations > 100000) continue;
 
       draws.push({
@@ -164,36 +176,46 @@ function parseDrawsFromHtml(html: string, defaultProgram: string): ScrapedDraw[]
     }
   }
 
-  return draws;
+  return { draws, tablesFound, rowsBeforeFilter };
 }
 
 // ----- Public API -----
 
-export type ScrapeResult = {
-  draws: ScrapedDraw[];
-  source: string;
-  fetchedAt: string;
-  error?: string;
-};
-
 export async function scrapeGeneralDraws(): Promise<ScrapeResult> {
   const fetchedAt = new Date().toISOString();
+  let httpStatus: number | null = null;
+  let contentType: string | null = null;
+  let htmlLength: number | null = null;
+  let htmlPreview: string | null = null;
+
   try {
     const res = await fetch(IRCC_GENERAL_URL, {
       headers: FETCH_HEADERS,
       cache: "no-store",
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    httpStatus = res.status;
+    contentType = res.headers.get("content-type");
+
+    if (!res.ok) {
+      const err = `HTTP ${res.status}`;
+      console.log(`[scraper] general draws fetch failed: ${err} url=${IRCC_GENERAL_URL}`);
+      return { draws: [], source: IRCC_GENERAL_URL, fetchedAt, httpStatus, contentType, htmlLength: 0, tablesFound: 0, rowsBeforeFilter: 0, htmlPreview: null, error: err };
+    }
+
     const html = await res.text();
-    const draws = parseDrawsFromHtml(html, "General");
-    return { draws, source: IRCC_GENERAL_URL, fetchedAt };
+    htmlLength = html.length;
+    htmlPreview = html.slice(0, 500);
+
+    const { draws, tablesFound, rowsBeforeFilter } = parseDrawsFromHtml(html, "General");
+
+    console.log(`[scraper] general: status=${httpStatus} len=${htmlLength} tables=${tablesFound} rows=${rowsBeforeFilter} draws=${draws.length} url=${IRCC_GENERAL_URL}`);
+
+    return { draws, source: IRCC_GENERAL_URL, fetchedAt, httpStatus, contentType, htmlLength, tablesFound, rowsBeforeFilter, htmlPreview };
   } catch (err) {
-    return {
-      draws: [],
-      source: IRCC_GENERAL_URL,
-      fetchedAt,
-      error: err instanceof Error ? err.message : String(err),
-    };
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`[scraper] general draws exception: ${msg}`);
+    return { draws: [], source: IRCC_GENERAL_URL, fetchedAt, httpStatus, contentType, htmlLength, tablesFound: null, rowsBeforeFilter: null, htmlPreview, error: msg };
   }
 }
 
@@ -201,17 +223,34 @@ export async function scrapeCategoryDraws(): Promise<ScrapeResult> {
   const fetchedAt = new Date().toISOString();
 
   for (const url of [IRCC_CATEGORY_URL, IRCC_CATEGORY_URL_FALLBACK]) {
+    let httpStatus: number | null = null;
+    let contentType: string | null = null;
+
     try {
       const res = await fetch(url, {
         headers: FETCH_HEADERS,
         cache: "no-store",
       });
-      if (!res.ok) continue; // try next URL
+
+      httpStatus = res.status;
+      contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        console.log(`[scraper] category draws fetch failed: HTTP ${res.status} url=${url}`);
+        continue;
+      }
+
       const html = await res.text();
-      const draws = parseDrawsFromHtml(html, "Category-Based");
-      return { draws, source: url, fetchedAt };
-    } catch {
-      // try next URL
+      const htmlLength = html.length;
+      const htmlPreview = html.slice(0, 500);
+
+      const { draws, tablesFound, rowsBeforeFilter } = parseDrawsFromHtml(html, "Category-Based");
+
+      console.log(`[scraper] category: status=${httpStatus} len=${htmlLength} tables=${tablesFound} rows=${rowsBeforeFilter} draws=${draws.length} url=${url}`);
+
+      return { draws, source: url, fetchedAt, httpStatus, contentType, htmlLength, tablesFound, rowsBeforeFilter, htmlPreview };
+    } catch (err) {
+      console.log(`[scraper] category draws exception for ${url}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -219,6 +258,12 @@ export async function scrapeCategoryDraws(): Promise<ScrapeResult> {
     draws: [],
     source: IRCC_CATEGORY_URL,
     fetchedAt,
+    httpStatus: null,
+    contentType: null,
+    htmlLength: null,
+    tablesFound: null,
+    rowsBeforeFilter: null,
+    htmlPreview: null,
     error: "All category draw URLs returned non-200 or failed",
   };
 }
