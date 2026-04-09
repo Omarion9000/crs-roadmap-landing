@@ -26,8 +26,17 @@ function isIosWebview(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   if (!/iPhone|iPad|iPod/i.test(ua)) return false;
+
+  // Explicit in-app browser signals — check these first so known webviews
+  // are caught even if their UA accidentally includes "Safari/".
+  // GSA = Gmail / Google Search App on iOS
+  // FBAN/FBIOS = Facebook, Instagram = Instagram, LinkedInApp = LinkedIn
+  if (/GSA\/|FBAN|FBIOS|Instagram|LinkedInApp|Snapchat|WhatsApp/i.test(ua)) return true;
+
   // Real Safari always includes "Version/X.X ... Safari/"
+  // In-app WKWebViews usually omit the Version/ component.
   if (/Version\/\d+\.\d+.*Safari\//i.test(ua)) return false;
+
   return true;
 }
 
@@ -175,6 +184,17 @@ function AuthCallbackInner() {
         // survives navigation and is available here in the same browser.
         const code = searchParams.get("code");
         if (code) {
+          // Second-layer webview gate — catches edge cases where the outer
+          // isIosWebview() check passed (e.g. UA with unexpected Safari/ token,
+          // or Mail.app WKWebView mimicking Safari). Without this, calling
+          // exchangeCodeForSession() in a webview throws "PKCE code verifier
+          // not found in storage" because the cookie set on the login page in
+          // a different browser context is not accessible here.
+          if (isIosWebview()) {
+            setState({ phase: "webview", url: window.location.href });
+            return;
+          }
+
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
 
