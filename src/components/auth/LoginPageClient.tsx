@@ -315,6 +315,9 @@ export default function LoginPageClient() {
                       <div className="mt-2 text-sm leading-6 text-emerald-50/85">
                         We sent your secure access link. Open it on this device to continue.
                       </div>
+                      <div className="mt-3 border-t border-emerald-500/15 pt-3 text-xs leading-5 text-emerald-100/50">
+                        📱 On iPhone: open the link in <strong>Safari</strong>, not the Gmail or Mail in-app browser. If it doesn&apos;t open correctly, copy the link and paste it into Safari.
+                      </div>
                     </motion.div>
                   ) : null}
                 </AnimatePresence>
