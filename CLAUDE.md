@@ -43,13 +43,13 @@ Local `.env.local` only has `VERCEL_OIDC_TOKEN`. All secrets live in Vercel dash
 
 ## Key Architecture Decisions
 
-### Auth — implicit flow (important)
-- `flowType: 'implicit'` is set on the Supabase browser client (`src/lib/supabase/browser.ts`)
-- Magic links deliver tokens in the URL **hash fragment** (`#access_token=...&refresh_token=...`)
-- Hash fragments are never sent to the server → auth callback **must** be a client component
-- `src/app/auth/callback/page.tsx` is a client component that reads `window.location.hash` and calls `supabase.auth.setSession()`
-- There is NO `route.ts` in `/auth/callback` — it was deleted intentionally
-- Welcome email is triggered via `POST /api/auth/post-signin` (fire-and-forget from client after auth)
+### Auth — PKCE flow via @supabase/ssr (important)
+- `@supabase/ssr` v0.9 **always forces `flowType:'pkce'`** in `createBrowserClient` — it hardcodes it after spreading any options, so passing `flowType:'implicit'` is silently ignored
+- Magic links arrive as `?code=XXX&returnTo=/start` (PKCE code in query params)
+- The `code_verifier` is stored in a **cookie** by `@supabase/ssr` (not localStorage), so it persists across page navigation in the same browser session
+- `src/app/auth/callback/page.tsx` is a **client component** that calls `supabase.auth.exchangeCodeForSession(code)` (Path 1), with hash fragment (Path 2) and `token_hash` (Path 3) as fallbacks
+- There is NO `route.ts` in `/auth/callback` — it was deleted intentionally; a server handler never sees query params routed through Supabase's redirect
+- Welcome email triggered via `POST /api/auth/post-signin` (fire-and-forget from client after auth)
 
 ### iOS Webview handling
 - Gmail, Instagram, Facebook on iPhone open links in WKWebView — no shared localStorage with Safari
