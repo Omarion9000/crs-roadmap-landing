@@ -25,6 +25,32 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Marquee animations for testimonials carousel */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes marquee-reverse {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.marquee-row {
+  animation: marquee 20s linear infinite;
+}
+.marquee-row-reverse {
+  animation: marquee-reverse 20s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .marquee-row {
+    animation-duration: 12s;
+  }
+  .marquee-row-reverse {
+    animation-duration: 12s;
+  }
+}
+
 /* Hide scrollbar for horizontal scroll tracks */
 .scrollbar-hide {
   -ms-overflow-style: none;

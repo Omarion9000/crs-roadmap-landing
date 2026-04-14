@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type UserPlan = "free" | "pro";
 
@@ -29,23 +29,24 @@ export function isNewUsagePeriod(periodStart: string | Date, now: Date = new Dat
   return now >= nextMonthStart;
 }
 export async function getUserSubscription(userId: string) {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select(
-      "id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, ai_requests_used, ai_requests_limit, ai_usage_period_start, created_at"
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<SubscriptionRecord>();
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select(
+        "id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, ai_requests_used, ai_requests_limit, ai_usage_period_start, created_at"
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<SubscriptionRecord>();
 
-  if (error) {
+    if (error) return null;
+    return data;
+  } catch {
     return null;
   }
-
-  return data;
 }
 
 export async function getUserPlan(userId: string): Promise<UserPlan> {

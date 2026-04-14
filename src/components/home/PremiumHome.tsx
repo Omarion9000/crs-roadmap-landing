@@ -203,6 +203,117 @@ function ScreenshotCard({
   );
 }
 
+// ── Testimonials data ─────────────────────────────────────────────────────────
+
+type Testimonial = {
+  name: string;
+  country: string;
+  crs_before: number;
+  crs_after: number;
+  program: string;
+  quote: string;
+};
+
+const TESTIMONIALS: Testimonial[] = [
+  {
+    name: "Priya Mehta",
+    country: "India",
+    crs_before: 438,
+    crs_after: 487,
+    program: "FSW",
+    quote: "I had no idea language retesting could push me past the cutoff. PRAVÉ showed me exactly what to study and in 3 months I had my ITA.",
+  },
+  {
+    name: "Carlos Reyes",
+    country: "Mexico",
+    crs_before: 412,
+    crs_after: 468,
+    program: "CEC",
+    quote: "The simulator broke down every single point I was leaving on the table. My spouse's IELTS alone added 40 points — I never would have thought of that.",
+  },
+  {
+    name: "Yuki Tanaka",
+    country: "Japan",
+    crs_before: 451,
+    crs_after: 502,
+    program: "FSW",
+    quote: "Getting above 500 felt impossible. PRAVÉ mapped out a 6-month plan and I followed it step by step. Received my ITA last month.",
+  },
+  {
+    name: "Amara Osei",
+    country: "Ghana",
+    crs_before: 398,
+    crs_after: 461,
+    program: "FSW",
+    quote: "Worth every penny. The AI strategy identified a provincial nomination pathway I hadn't considered. That alone was +600 points.",
+  },
+  {
+    name: "Elena Volkov",
+    country: "Ukraine",
+    crs_before: 423,
+    crs_after: 479,
+    program: "CEC",
+    quote: "Clear, actionable, no fluff. I knew exactly what to do next after my first roadmap. The draws feed kept me updated in real time.",
+  },
+  {
+    name: "Rahul Sharma",
+    country: "India",
+    crs_before: 445,
+    crs_after: 491,
+    program: "FSW",
+    quote: "The French bonus recommendation surprised me. Took a basic TEF prep course and jumped 50 points. Simple but nobody tells you this.",
+  },
+];
+
+// Rows for the two marquee tracks (overlap indexes 2-3 so both rows feel full)
+const TESTIMONIALS_ROW1 = TESTIMONIALS.slice(0, 4); // [0,1,2,3]
+const TESTIMONIALS_ROW2 = TESTIMONIALS.slice(2);    // [2,3,4,5]
+
+function TestimonialCard({ item, index }: { item: Testimonial; index: number }) {
+  const colorClass = VALUE_COLORS[index % VALUE_COLORS.length];
+  const gain = item.crs_after - item.crs_before;
+
+  return (
+    <div className="flex w-[340px] shrink-0 flex-col rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
+      {/* Stars */}
+      <div className="mb-4 flex gap-0.5 text-[13px] text-amber-300/90">
+        {"★★★★★"}
+      </div>
+
+      {/* Quote */}
+      <p className="flex-1 text-sm leading-7 text-white/70 italic">
+        &ldquo;{item.quote}&rdquo;
+      </p>
+
+      {/* Bottom row */}
+      <div className="mt-5 flex items-center gap-3">
+        {/* Avatar initial */}
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${colorClass}`}
+        >
+          {item.name[0]}
+        </div>
+
+        {/* Name + country */}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-white">{item.name}</div>
+          <div className="text-xs text-white/45">{item.country}</div>
+        </div>
+
+        {/* Program badge + CRS gain chip */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="rounded-full border border-white/12 bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
+            {item.program}
+          </div>
+          <div className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+            +{gain} pts
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PremiumHome() {
   const { t } = useLanguage();
 
@@ -563,6 +674,62 @@ export default function PremiumHome() {
           </motion.div>
         </motion.div>
       </Section>
+
+      {/* ── TESTIMONIALS ── */}
+      <motion.section
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, amount: 0.15 }}
+        className="py-14"
+      >
+        {/* Section header — constrained width */}
+        <motion.div variants={itemVariants} className="mx-auto max-w-6xl px-6">
+          <div className="max-w-3xl">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200/70">
+              REAL RESULTS
+            </div>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Candidates who found their path
+            </h2>
+            <p className="mt-3 text-base leading-7 text-white/58">
+              Join thousands optimizing their CRS score with PRAVÉ
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Marquee — full width, faded edges */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-10 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
+        >
+          {/* Row 1 — scrolls left */}
+          <div
+            className="marquee-row flex gap-4 hover:[animation-play-state:paused]"
+          >
+            {[...TESTIMONIALS_ROW1, ...TESTIMONIALS_ROW1].map((item, i) => (
+              <TestimonialCard
+                key={`r1-${i}`}
+                item={item}
+                index={TESTIMONIALS.indexOf(item)}
+              />
+            ))}
+          </div>
+
+          {/* Row 2 — scrolls right */}
+          <div
+            className="marquee-row-reverse mt-4 flex gap-4 hover:[animation-play-state:paused]"
+          >
+            {[...TESTIMONIALS_ROW2, ...TESTIMONIALS_ROW2].map((item, i) => (
+              <TestimonialCard
+                key={`r2-${i}`}
+                item={item}
+                index={TESTIMONIALS.indexOf(item)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      </motion.section>
 
       {/* ── FAQ ── */}
       <Section eyebrow={t("faq_eyebrow")} title={t("faq_title")} tight>

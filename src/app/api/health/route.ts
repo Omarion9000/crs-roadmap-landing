@@ -21,7 +21,7 @@ export async function GET() {
     });
 
     const { count, error } = await supabase
-      .from("draws")
+      .from("express_entry_draws")
       .select("*", { count: "exact", head: true });
 
     if (error) {

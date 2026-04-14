@@ -5,10 +5,21 @@ import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/next";
 import { LanguageProvider } from "@/lib/i18n/context";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://prave.ca";
+const CANONICAL = "https://www.pravepath.ca";
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? CANONICAL).trim();
+
+// new URL() throws on malformed input — guard so a bad env var never
+// crashes every page in the app (API routes wouldn't be affected, masking the issue).
+function safeMetadataBase(raw: string): URL {
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL(CANONICAL);
+  }
+}
 
 export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
+  metadataBase: safeMetadataBase(APP_URL),
   title: {
     default: "PRAVÉ — Your Roadmap to Canadian PR",
     template: "%s — PRAVÉ",

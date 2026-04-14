@@ -44,8 +44,8 @@ export default async function BillingPage({
       redirect("/login");
     }
 
-    const priceId = process.env.STRIPE_PRICE_PRO;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const priceId = process.env.STRIPE_PRICE_PRO?.trim();
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").trim();
 
     if (!priceId) {
       throw new Error("Missing STRIPE_PRICE_PRO");

@@ -289,18 +289,25 @@ export async function GET(req: Request) {
     );
 
     const newlyInserted: DrawRow[] = [];
+    const BATCH_SIZE = 50;
 
-    for (const draw of allScraped) {
-      try {
-        const { inserted, row } = await upsertDraw(supabase, draw);
-        if (inserted && row) {
+    for (let i = 0; i < allScraped.length; i += BATCH_SIZE) {
+      const batch = allScraped.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map((draw) =>
+          upsertDraw(supabase, draw).catch((err) => {
+            summary.errors.push(
+              `insert(${draw.draw_date}/${draw.program_type}): ${err instanceof Error ? err.message : String(err)}`
+            );
+            return null;
+          })
+        )
+      );
+      for (const result of results) {
+        if (result?.inserted && result.row) {
           summary.inserted++;
-          newlyInserted.push(row);
+          newlyInserted.push(result.row);
         }
-      } catch (err) {
-        summary.errors.push(
-          `insert(${draw.draw_date}/${draw.program_type}): ${err instanceof Error ? err.message : String(err)}`
-        );
       }
     }
 

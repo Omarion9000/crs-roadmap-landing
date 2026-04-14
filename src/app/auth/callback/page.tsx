@@ -13,7 +13,7 @@
  * Also handles the token_hash query param (OTP path, kept as fallback).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -44,10 +44,21 @@ function isIosWebview(): boolean {
 
 function OpenInSafari({ callbackUrl }: { callbackUrl: string }) {
   const safariUrl = callbackUrl.replace(/^https:\/\//i, "x-safari-https://");
+  const didRedirect = useRef(false);
+
+  // Auto-redirect to Safari on mount — no user tap required.
+  // The ?code= is intact because we never called exchangeCodeForSession.
+  useEffect(() => {
+    if (didRedirect.current) return;
+    didRedirect.current = true;
+    window.location.replace(safariUrl);
+  }, [safariUrl]);
 
   function handleOpen() {
-    window.location.href = safariUrl;
-    setTimeout(() => { window.location.href = callbackUrl; }, 800);
+    window.location.replace(safariUrl);
+    // No setTimeout fallback — if the deep link works, Safari handles the
+    // code. A fallback navigate here would reload the webview with a
+    // now-consumed code, which would fail anyway.
   }
 
   async function handleCopy() {
@@ -167,9 +178,12 @@ function AuthCallbackInner() {
   useEffect(() => {
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
 
-    // Detect iOS webview before any network request
+    // Detect iOS webview before any network request.
+    // Auto-redirect to Safari immediately — ?code= is untouched.
     if (isIosWebview()) {
-      setState({ phase: "webview", url: window.location.href });
+      const url = window.location.href;
+      window.location.replace(url.replace(/^https:\/\//i, "x-safari-https://"));
+      setState({ phase: "webview", url }); // renders fallback UI if redirect stalls
       return;
     }
 
@@ -191,7 +205,9 @@ function AuthCallbackInner() {
           // not found in storage" because the cookie set on the login page in
           // a different browser context is not accessible here.
           if (isIosWebview()) {
-            setState({ phase: "webview", url: window.location.href });
+            const url = window.location.href;
+            window.location.replace(url.replace(/^https:\/\//i, "x-safari-https://"));
+            setState({ phase: "webview", url });
             return;
           }
 
@@ -268,6 +284,22 @@ function AuthCallbackInner() {
 
         throw new Error("No authentication tokens found in this link. It may have expired.");
       } catch (err) {
+        // Before showing the error screen, check if the user already has a
+        // valid session. This handles two cases:
+        //   (a) exchangeCodeForSession set the session but also returned an
+        //       error (rare race condition in @supabase/ssr)
+        //   (b) The user already had an active session from a previous login —
+        //       clicking "Request a new link" on the error page navigates to
+        //       /login which then detects the session and redirects here.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            router.replace(returnTo);
+            return;
+          }
+        } catch {
+          // ignore — fall through to show error
+        }
         const message =
           err instanceof Error
             ? err.message
